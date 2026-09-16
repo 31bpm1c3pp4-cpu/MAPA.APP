@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Operacional</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#0B0D10;
+  --panel:#13161B;
+  --panel-2:#191D23;
+  --border:#262B33;
+  --border-soft:#1D2128;
+  --text:#E7E9EC;
+  --text-dim:#8B929D;
+  --text-faint:#5B6270;
+  --accent:#C98A3D;
+  --accent-dim:#8C6230;
+  --accent-soft:rgba(201,138,61,0.14);
+  --danger:#C4554A;
+  --danger-soft:rgba(196,85,74,0.14);
+  --ok:#5C9A6B;
+  --radius:3px;
+  --font-ui:'Space Grotesk',-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-ui);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+::selection{background:var(--accent-soft);}
+
+button{cursor:pointer;}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:1px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important;transition-duration:0.001ms !important;}
+}
+
+#app{ height:100vh; display:flex; flex-direction:column; }
+
+header.topbar{
+  display:flex; align-items:center; gap:14px; padding:0 18px;
+  height:52px; min-height:52px; background:var(--panel);
+  border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto;
+}
+.brand{ display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
+.brand-mark{ font-weight:700; font-size:15px; letter-spacing:0.02em; }
+.brand-sep{color:var(--text-faint);}
+.battalion-input{
+  background:transparent; border:1px solid transparent; color:var(--text-dim);
+  font-size:13px; padding:4px 6px; border-radius:var(--radius); width:190px;
+  transition:border-color .12s, background .12s;
+}
+.battalion-input:hover{border-color:var(--border);}
+.battalion-input:focus{background:var(--panel-2);border-color:var(--border);color:var(--text);}
+
+.map-switch{display:flex;align-items:center;gap:6px;margin-left:4px;padding-left:14px;border-left:1px solid var(--border-soft); white-space:nowrap;}
+.map-select{
+  background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+  padding:6px 8px; border-radius:var(--radius); font-size:12.5px; max-width:150px;
+}
+.btn.icon-only{width:30px;padding:0;justify-content:center;}
+
+.topbar-spacer{flex:1;min-width:8px;}
+.topbar-actions{display:flex;gap:8px;align-items:center;white-space:nowrap;}
+
+.btn{
+  display:inline-flex; align-items:center; gap:6px; background:var(--panel-2);
+  border:1px solid var(--border); color:var(--text); padding:7px 12px;
+  border-radius:var(--radius); font-size:13px; font-weight:500; line-height:1;
+  transition:border-color .12s, background .12s, color .12s; white-space:nowrap;
+}
+.btn:hover{border-color:#3A4150;background:#1E232A;}
+.btn:active{background:#161A20;}
+.btn.primary{ background:var(--accent); border-color:var(--accent); color:#1A1204; font-weight:600; }
+.btn.primary:hover{background:#DE9B48;border-color:#DE9B48;}
+.btn.danger{color:var(--danger);}
+.btn.danger:hover{border-color:var(--danger);background:var(--danger-soft);}
+.btn.ghost{background:transparent;}
+.btn.small{padding:5px 9px;font-size:12px;}
+.btn.active-toggle{background:var(--accent-soft);border-color:var(--accent-dim);color:var(--accent);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.btn svg{width:14px;height:14px;flex-shrink:0;}
+
+.layout{ flex:1; display:flex; min-height:0; }
+
+.sidebar{
+  width:280px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; min-height:0;
+}
+.sidebar-section{ padding:14px 14px 12px; border-bottom:1px solid var(--border-soft); }
+.search-input{
+  width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+  padding:8px 10px; border-radius:var(--radius); font-size:13px;
+}
+.search-input::placeholder{color:var(--text-faint);}
+
+.section-label{
+  font-size:11px; color:var(--text-faint); margin-bottom:8px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.cat-filter-row{
+  display:flex; align-items:center; gap:8px; padding:5px 2px;
+  border-radius:var(--radius); cursor:pointer; font-size:13px;
+}
+.cat-filter-row:hover{background:var(--panel-2);}
+.cat-check{
+  width:14px;height:14px; border:1.5px solid var(--border); border-radius:2px;
+  flex-shrink:0; display:flex;align-items:center;justify-content:center;
+}
+.cat-check.checked{background:var(--accent);border-color:var(--accent);}
+.cat-check.checked svg{width:10px;height:10px;color:#1A1204;}
+.cat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.cat-filter-name{flex:1;color:var(--text);}
+.cat-filter-count{color:var(--text-faint);font-family:var(--font-mono);font-size:11px;}
+.layer-divider{height:1px;background:var(--border-soft);margin:6px 0;}
+
+.point-list{ flex:1; overflow-y:auto; padding:6px 8px; }
+.point-row{
+  display:flex; align-items:center; gap:9px; padding:8px 8px;
+  border-radius:var(--radius); cursor:pointer; border:1px solid transparent;
+}
+.point-row:hover{background:var(--panel-2);}
+.point-row.active{background:var(--accent-soft);border-color:var(--accent-dim);}
+.point-icon-sm{
+  width:22px;height:22px; border-radius:50%; display:flex;align-items:center;justify-content:center; flex-shrink:0;
+}
+.point-icon-sm svg{width:12px;height:12px;}
+.point-row-text{min-width:0;flex:1;}
+.point-row-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.point-row-cat{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.empty-hint{padding:18px 10px;color:var(--text-faint);font-size:12.5px;line-height:1.6;text-align:center;}
+
+.map-area{ flex:1; display:flex; flex-direction:column; min-width:0; position:relative; background:#08090B; }
+.toolbar{
+  display:flex; align-items:center; gap:6px; padding:9px 14px;
+  border-bottom:1px solid var(--border); background:var(--panel); flex-shrink:0; flex-wrap:wrap;
+}
+.toolbar-group{display:flex;gap:2px;background:var(--panel-2);padding:2px;border-radius:var(--radius);border:1px solid var(--border);}
+.tool-btn{
+  display:flex;align-items:center;gap:6px; background:transparent;border:none;color:var(--text-dim);
+  padding:6px 11px;border-radius:2px;font-size:12.5px;font-weight:500;
+}
+.tool-btn svg{width:14px;height:14px;}
+.tool-btn:hover{color:var(--text);}
+.tool-btn.active{background:var(--accent);color:#1A1204;}
+.toolbar-hint{ font-size:12px;color:var(--text-faint);margin-left:8px; font-family:var(--font-mono); }
+.toolbar-spacer{flex:1;}
+
+.map-viewport{
+  flex:1; overflow:auto; position:relative;
+  background: radial-gradient(circle at 50% 50%, #0F1115 0%, #08090B 70%);
+}
+.map-canvas{ position:relative; margin:40px; background:#0E1013; }
+/* A "janela" do iframe (o próprio elemento <iframe>) nunca é transformada —
+   fica sempre fixa preenchendo o canvas. Quem se move durante o arraste é
+   somente a camada de conteúdo (#overlayLayers: pontos, ruas, bairros),
+   dentro de .overlay-layers logo abaixo. Isso evita o iframe "vazar" para
+   fora da área visível durante o pan e elimina o repaint pesado de
+   transformar um <iframe> inteiro a cada frame. */
+.map-canvas img{ display:block; width:100%; height:100%; user-select:none; -webkit-user-drag:none; pointer-events:none; position:absolute; top:0; left:0; }
+.map-canvas iframe{ position:absolute; top:0; left:0; width:100%; height:100%; border:0; display:block; background:#0E1013; transform:translateZ(0); }
+.map-canvas .bg-hidden{ display:none !important; }
+.overlay-layers{ position:absolute; top:0; left:0; width:100%; height:100%; will-change:transform; }
+/* Durante o arraste (classe .panning) o transform segue o mouse 1:1, sem
+   suavização, para não parecer "borrachudo". Ao soltar, a câmera real já
+   foi recalculada e as camadas já foram re-renderizadas na posição final,
+   então o transform é zerado imediatamente — sem esperar o iframe recarregar. */
+.overlay-layers:not(.panning){ transition:transform .12s ease-out; }
+/* Mapas com fundo Google My Maps preenchem toda a área visível do
+   viewport (proporcional à tela real), em vez de um retângulo de tamanho
+   fixo em pixels dentro de uma área rolável. */
+.map-viewport.embed-fill{ overflow:hidden; }
+.map-canvas.embed-fill{ position:absolute; inset:0; margin:0; width:100% !important; height:100% !important; }
+.map-canvas.mode-add-point{cursor:crosshair;}
+.map-canvas.mode-draw-street{cursor:crosshair;}
+.map-canvas.mode-select{cursor:grab;}
+.map-canvas.panning{cursor:grabbing;}
+.map-canvas.embed-locked iframe{pointer-events:none;}
+.map-canvas.embed-interactive iframe{pointer-events:auto;}
+
+svg.overlay{ position:absolute;top:0;left:0; width:100%;height:100%; pointer-events:none; }
+svg.overlay.layer-hidden{display:none;}
+svg.overlay .street{
+  fill:none; stroke:#D8DBE0; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;
+  opacity:0.85; pointer-events:stroke; cursor:pointer;
+}
+svg.overlay .street:hover{stroke:#F2F4F6;opacity:1;}
+svg.overlay .street.selected{stroke:var(--accent);opacity:1;stroke-width:4;}
+svg.overlay .street-hit{ fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer; }
+svg.overlay .draft-street{ fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 5; }
+svg.overlay .vertex-handle{ fill:#0B0D10;stroke:var(--accent);stroke-width:2; pointer-events:all;cursor:grab; }
+svg.overlay .bairro{ fill:rgba(140,98,48,0.16); stroke:#C98A3D; stroke-width:2.25; pointer-events:none; }
+svg.overlay .bairro.selected{ stroke:#F2B463; fill:rgba(201,138,61,0.26); stroke-width:3; }
+svg.overlay .bairro-hit{ fill:rgba(0,0,0,0.001); stroke:none; pointer-events:fill; cursor:pointer; }
+svg.overlay .bairro-label{ font-family:var(--font-mono); font-size:13px; font-weight:500; fill:#F1F2F4; pointer-events:none; paint-order:stroke; stroke:#0B0D10; stroke-width:3.5px; stroke-linejoin:round; }
+svg.overlay .bairro-label-sub{ font-family:var(--font-mono); font-size:11px; fill:#D8CBB5; pointer-events:none; paint-order:stroke; stroke:#0B0D10; stroke-width:3px; stroke-linejoin:round; }
+
+.markers-layer{ position:absolute;top:0;left:0; width:100%;height:100%; pointer-events:none; }
+.marker{ position:absolute; width:0;height:0; cursor:pointer; user-select:none; pointer-events:auto; }
+.marker-pin{
+  position:absolute; left:0;top:0; transform:translate(-50%,-50%); width:22px;height:22px;
+  border-radius:50%; display:flex;align-items:center;justify-content:center;
+  border:2px solid #0B0D10; box-shadow:0 0 0 2px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.55); z-index:2;
+}
+.marker-pin svg{width:12px;height:12px;}
+.marker.selected .marker-pin{outline:2px solid #fff;outline-offset:2px;}
+.marker-label{
+  position:absolute; left:0;top:15px; transform:translateX(-50%); font-size:10.5px;
+  background:rgba(11,13,16,0.88); border:1px solid var(--border); padding:1px 6px; border-radius:2px;
+  color:var(--text-dim); white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;
+  pointer-events:none; z-index:1;
+}
+
+.zoom-controls{
+  position:absolute; right:18px;bottom:18px; display:flex;flex-direction:column;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; z-index:5;
+}
+.zoom-controls button{
+  width:32px;height:32px; background:transparent;border:none;color:var(--text-dim);
+  display:flex;align-items:center;justify-content:center; border-bottom:1px solid var(--border-soft);
+}
+.zoom-controls button:last-child{border-bottom:none;}
+.zoom-controls button:hover{background:var(--panel-2);color:var(--text);}
+.zoom-controls svg{width:15px;height:15px;}
+.zoom-level{
+  position:absolute; right:18px;bottom:150px; font-family:var(--font-mono); font-size:11px;
+  color:var(--text-faint); background:var(--panel); border:1px solid var(--border); padding:3px 7px; border-radius:var(--radius); z-index:5;
+}
+.embed-help{
+  position:absolute; left:18px; right:18px; bottom:18px; z-index:6;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:rgba(19,22,27,0.96); border:1px solid var(--accent-dim);
+  color:var(--text-dim); font-size:12px; line-height:1.5;
+  padding:10px 12px; border-radius:var(--radius);
+}
+.embed-help.hidden{display:none;}
+.embed-help strong{color:var(--text);font-weight:600;}
+.embed-help .btn{flex-shrink:0;}
+.embed-help-close{
+  margin-left:auto; background:transparent;border:none;color:var(--text-faint);
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.embed-help-close:hover{color:var(--text);}
+.embed-help-close svg{width:13px;height:13px;}
+/* O nome do mapa ativo não fica mais flutuando sobre o canvas (onde cobria
+   pontos e ruas no canto superior esquerdo) — agora vive fixo na barra de
+   ferramentas, acima da área de mapa, sem sobrepor nada. */
+.map-badge{
+  font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+  background:var(--panel-2); border:1px solid var(--border);
+  padding:6px 10px; border-radius:var(--radius); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:280px; flex-shrink:0;
+}
+@media (max-width:860px){ .map-badge{ max-width:120px; } }
+
+.draft-controls{
+  position:absolute; left:50%;top:16px; transform:translateX(-50%); display:flex;gap:8px;
+  background:var(--panel); border:1px solid var(--accent-dim); padding:7px 9px; border-radius:var(--radius);
+  align-items:center; font-size:12.5px; box-shadow:0 4px 14px rgba(0,0,0,0.4); z-index:6;
+}
+
+.drawer-backdrop{
+  position:fixed;inset:0; background:rgba(0,0,0,0.35); z-index:40; opacity:0;pointer-events:none; transition:opacity .15s;
+}
+.drawer-backdrop.show{opacity:1;pointer-events:all;}
+.drawer{
+  position:fixed; top:0;right:0;bottom:0; width:380px; background:var(--panel); border-left:1px solid var(--border);
+  z-index:41; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .18s ease;
+  box-shadow:-8px 0 24px rgba(0,0,0,0.35);
+}
+.drawer.show{transform:translateX(0);}
+.drawer-head{ display:flex;align-items:center;gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.drawer-head-icon{ width:28px;height:28px;border-radius:50%; display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.drawer-head-icon svg{width:14px;height:14px;}
+.drawer-title{font-weight:600;font-size:14px;flex:1;min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.drawer-close{
+  background:transparent;border:none;color:var(--text-faint); width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;border-radius:var(--radius); flex-shrink:0;
+}
+.drawer-close:hover{background:var(--panel-2);color:var(--text);}
+.drawer-close svg{width:16px;height:16px;}
+.drawer-body{ flex:1;overflow-y:auto;padding:16px; display:flex;flex-direction:column;gap:14px; }
+.field-label{ font-size:11px;color:var(--text-faint);margin-bottom:5px;display:block; }
+.field-hint{ font-size:11px;color:var(--text-faint); margin-top:4px; line-height:1.5; }
+.field-input,.field-textarea,.field-select{
+  width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+  padding:8px 10px; border-radius:var(--radius); font-size:13px;
+}
+.field-textarea{resize:vertical;min-height:76px;line-height:1.5;}
+.field-mono{font-family:var(--font-mono);font-size:12px;}
+.field-row{display:flex;gap:8px;}
+.field-row .field{flex:1;min-width:0;}
+.maps-row{display:flex;gap:6px;}
+.maps-row .field-input{flex:1;}
+
+.photo-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.photo-thumb{ position:relative; aspect-ratio:1; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); background:var(--panel-2); }
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in;}
+.photo-remove{
+  position:absolute;top:3px;right:3px; width:18px;height:18px; background:rgba(11,13,16,0.85);
+  border:1px solid var(--border); border-radius:50%; display:flex;align-items:center;justify-content:center; color:var(--text-dim);
+}
+.photo-remove svg{width:10px;height:10px;}
+.photo-remove:hover{color:var(--danger);}
+.photo-add{
+  aspect-ratio:1; border:1.5px dashed var(--border); border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center; color:var(--text-faint); background:transparent;
+}
+.photo-add:hover{border-color:var(--accent-dim);color:var(--text-dim);}
+.photo-add svg{width:18px;height:18px;}
+
+.meta-row{ display:flex;justify-content:space-between; font-size:11px;color:var(--text-faint); font-family:var(--font-mono); padding-top:2px; }
+.drawer-footer{ padding:14px 16px; border-top:1px solid var(--border); display:flex;gap:8px; flex-shrink:0; }
+.drawer-footer .btn{flex:1;justify-content:center;}
+
+.modal-backdrop{
+  position:fixed;inset:0; background:rgba(5,6,8,0.6); display:flex;align-items:center;justify-content:center;
+  z-index:60; padding:20px;
+}
+.modal{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  width:460px; max-width:100%; max-height:85vh; display:flex;flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,0.5);
+}
+.modal.wide{width:680px;}
+.modal-head{ display:flex;align-items:center; padding:14px 16px;border-bottom:1px solid var(--border); flex-shrink:0; gap:10px; }
+.modal-title{font-weight:600;font-size:14px;flex:1;}
+.modal-body{padding:16px;overflow-y:auto;flex:1;}
+.modal-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;}
+.modal-close{
+  background:transparent;border:none;color:var(--text-faint); width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;border-radius:var(--radius); flex-shrink:0;
+}
+.modal-close:hover{background:var(--panel-2);color:var(--text);}
+.modal-close svg{width:16px;height:16px;}
+
+.cat-row{ display:flex;align-items:center;gap:8px; padding:9px 0; border-bottom:1px solid var(--border-soft); }
+.cat-row:last-child{border-bottom:none;}
+.color-input{ width:30px;height:30px; border:1px solid var(--border); border-radius:50%; background:none; padding:0; overflow:hidden; flex-shrink:0; }
+.color-input::-webkit-color-swatch-wrapper{padding:0;}
+.color-input::-webkit-color-swatch{border:none;border-radius:50%;}
+.icon-select{ width:74px;flex-shrink:0; }
+.cat-name-input{flex:1;min-width:0;}
+.icon-remove-btn{
+  background:transparent;border:none;color:var(--text-faint); width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;border-radius:var(--radius); flex-shrink:0;
+}
+.icon-remove-btn:hover{color:var(--danger);background:var(--danger-soft);}
+.icon-remove-btn svg{width:14px;height:14px;}
+.cat-count-hint{font-size:10.5px;color:var(--text-faint);white-space:nowrap;}
+
+.bairro-mgmt-row{ display:flex;align-items:center;gap:8px; padding:9px 0; border-bottom:1px solid var(--border-soft); }
+.bairro-mgmt-row:last-child{border-bottom:none;}
+.bairro-mgmt-name{flex:1;min-width:0;}
+.bairro-mgmt-pop{width:110px;flex-shrink:0;}
+.bairro-mgmt-status{font-size:10.5px; font-family:var(--font-mono); white-space:nowrap; width:78px; flex-shrink:0;}
+.bairro-mgmt-status.has-shape{color:var(--ok);}
+.bairro-mgmt-status.no-shape{color:var(--text-faint);}
+
+.map-mgmt-card{ border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:10px; background:var(--panel-2); }
+.map-mgmt-card:last-child{margin-bottom:0;}
+.map-mgmt-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.map-mgmt-head .field-input{flex:1;}
+.map-mgmt-grid{ display:flex; flex-direction:column; gap:8px; }
+.bg-mode-row{ display:flex; gap:6px; }
+.bg-mode-btn{
+  flex:1; text-align:center; padding:6px 8px; border-radius:var(--radius); border:1px solid var(--border);
+  background:var(--panel); color:var(--text-dim); font-size:12px; cursor:pointer;
+}
+.bg-mode-btn.active{background:var(--accent-soft);border-color:var(--accent-dim);color:var(--accent);}
+.map-mgmt-foot{ display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+
+.confirm-text{font-size:13px;color:var(--text-dim);line-height:1.6;margin:0 0 10px;}
+.confirm-text:last-child{margin-bottom:0;}
+
+.lightbox-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85); display:flex;align-items:center;justify-content:center; z-index:70;padding:30px;
+}
+.lightbox-backdrop img{ max-width:100%;max-height:100%; border-radius:2px; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+.lightbox-close{
+  position:absolute;top:20px;right:24px; background:var(--panel);border:1px solid var(--border);
+  color:var(--text);width:34px;height:34px;border-radius:50%; display:flex;align-items:center;justify-content:center;
+}
+.lightbox-close svg{width:16px;height:16px;}
+
+.toast{
+  position:fixed; bottom:20px;left:50%; transform:translateX(-50%) translateY(10px);
+  background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+  padding:9px 16px; border-radius:var(--radius); font-size:12.5px; z-index:80; opacity:0;
+  transition:opacity .18s, transform .18s; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  max-width:420px; text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.hidden{display:none !important;}
+
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#2A2F38;border-radius:5px;border:2px solid var(--panel);}
+::-webkit-scrollbar-thumb:hover{background:#3A4150;}
+
+@media (max-width:860px){
+  #sidebarToggle{display:flex !important;}
+  .sidebar{position:fixed;left:0;top:52px;bottom:0;z-index:30;transform:translateX(-100%);transition:transform .18s;box-shadow:8px 0 24px rgba(0,0,0,0.35);}
+  .sidebar.show{transform:translateX(0);}
+  .drawer{width:100%;}
+  .battalion-input{width:100px;}
+  .map-select{max-width:80px;}
+  .map-switch{padding-left:8px;margin-left:0;}
+  .topbar-actions .btn span{display:none;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <button class="btn ghost small" id="sidebarToggle" style="display:none;" title="Menu" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg>
+    </button>
+    <div class="brand">
+      <span class="brand-mark">MAPA OPERACIONAL</span>
+      <span class="brand-sep">/</span>
+      <input type="text" class="battalion-input" id="battalionInput" placeholder="nome do batalhão / seção">
+    </div>
+    <div class="map-switch">
+      <select class="map-select" id="mapSelector" title="Mapa / município ativo"></select>
+      <button class="btn ghost small" id="btnManageMaps" title="Gerenciar mapas e plano de fundo">Mapas</button>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <button class="btn ghost small" id="btnCategories">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/></svg>
+        <span>Categorias</span>
+      </button>
+      <button class="btn ghost small" id="btnBairros">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8l6-4 10 4-3 12-10-2z" stroke-linejoin="round"/></svg>
+        <span>Bairros</span>
+      </button>
+      <button class="btn ghost small" id="btnImport">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Importar</span>
+      </button>
+      <button class="btn primary small" id="btnExport">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Exportar backup</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar ponto por nome, descrição, registro…">
+      </div>
+      <div class="sidebar-section" id="categoryFilters">
+        <div class="section-label"><span>Camadas</span></div>
+      </div>
+      <div class="sidebar-section" style="border-bottom:none; padding-bottom:0; display:flex; flex-direction:column; min-height:0; flex:1;">
+        <div class="section-label"><span>Pontos cadastrados</span><span class="field-mono" id="pointCountLabel">0</span></div>
+      </div>
+      <div class="point-list" id="pointList"></div>
+    </aside>
+
+    <main class="map-area">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="tool-btn active" data-mode="select" id="toolSelect">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z" stroke-linejoin="round"/></svg>
+            Selecionar
+          </button>
+          <button class="tool-btn" data-mode="add-point" id="toolAddPoint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.3"/></svg>
+            Novo ponto
+          </button>
+          <button class="tool-btn" data-mode="draw-street" id="toolDrawStreet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5L17.5 6.5" stroke-dasharray="3 3"/></svg>
+            Nova rua
+          </button>
+          <button class="tool-btn" data-mode="draw-bairro" id="toolDrawBairro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8l6-4 10 4-3 12-10-2z" stroke-linejoin="round"/></svg>
+            Contorno de bairro
+          </button>
+        </div>
+        <span class="toolbar-hint" id="toolbarHint"></span>
+        <div class="toolbar-spacer"></div>
+        <div class="map-badge" id="mapBadge"></div>
+      </div>
+
+      <div class="map-viewport" id="mapViewport">
+        <div class="map-canvas mode-select embed-locked" id="mapCanvas">
+          <iframe id="mapEmbedFrame" src="" loading="lazy" title="Mapa base (Google My Maps)"></iframe>
+          <img id="mapImage" src="" alt="Mapa base" draggable="false">
+          <div class="overlay-layers" id="overlayLayers">
+            <svg class="overlay" id="bairroSvg" viewBox="0 0 1400 1143" preserveAspectRatio="none"></svg>
+            <svg class="overlay" id="overlaySvg" viewBox="0 0 1400 1143" preserveAspectRatio="none"></svg>
+            <div class="markers-layer" id="markersLayer"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="embed-help hidden" id="embedHelp">
+        <span>O mapa do Google não aparece? No My Maps, clique em <strong>Compartilhar</strong> e defina o acesso como <strong>"Qualquer pessoa com o link"</strong>, depois recarregue.</span>
+        <button type="button" class="btn small ghost" id="embedReloadBtn">Recarregar mapa</button>
+        <button type="button" class="btn small ghost" id="embedOpenBtn">Abrir no Google My Maps</button>
+        <button type="button" class="embed-help-close" id="embedHelpClose" title="Fechar aviso" aria-label="Fechar aviso">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+
+      <div class="draft-controls hidden" id="draftControls">
+        <span class="field-mono" id="draftLabel">clique para adicionar pontos</span>
+        <button class="btn small primary" id="draftFinish">Concluir (Enter)</button>
+        <button class="btn small ghost" id="draftCancel">Cancelar (Esc)</button>
+      </div>
+
+      <div class="zoom-level" id="zoomLevel">100%</div>
+      <div class="zoom-controls">
+        <button id="zoomIn" title="Aproximar" aria-label="Aproximar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6" stroke-linecap="round"/></svg></button>
+        <button id="zoomOut" title="Afastar" aria-label="Afastar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6" stroke-linecap="round"/></svg></button>
+        <button id="zoomReset" title="Centralizar" aria-label="Centralizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 1-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg></button>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+<div class="drawer" id="pointDrawer">
+  <div class="drawer-head">
+    <div class="drawer-head-icon" id="pointDrawerIcon"></div>
+    <div class="drawer-title" id="pointDrawerTitle">Ponto</div>
+    <button class="drawer-close" id="pointDrawerClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="drawer-body" id="pointDrawerBody"></div>
+  <div class="drawer-footer" id="pointDrawerFooter"></div>
+</div>
+
+<div class="drawer" id="streetDrawer">
+  <div class="drawer-head">
+    <div class="drawer-head-icon" style="background:var(--accent-soft);color:var(--accent);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5L17.5 6.5"/></svg>
+    </div>
+    <div class="drawer-title">Rua</div>
+    <button class="drawer-close" id="streetDrawerClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="drawer-body" id="streetDrawerBody"></div>
+  <div class="drawer-footer" id="streetDrawerFooter"></div>
+</div>
+
+<div class="drawer" id="bairroDrawer">
+  <div class="drawer-head">
+    <div class="drawer-head-icon" style="background:var(--accent-soft);color:var(--accent);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8l6-4 10 4-3 12-10-2z" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="drawer-title" id="bairroDrawerTitle">Bairro</div>
+    <button class="drawer-close" id="bairroDrawerClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="drawer-body" id="bairroDrawerBody"></div>
+  <div class="drawer-footer" id="bairroDrawerFooter"></div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<input type="file" id="photoInput" accept="image/*" multiple hidden>
+<input type="file" id="importInput" accept="application/json" hidden>
+<input type="file" id="mapImageInput" accept="image/*" hidden>
+
+<script>
+'use strict';
+
+/* ================= Placeholder de mapa (SVG leve, usado só se não houver embed nem imagem) ================= */
+function buildPlaceholder(label){
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1143" viewBox="0 0 1400 1143">'
+    + '<rect width="1400" height="1143" fill="#12141a"/>'
+    + '<g stroke="#232732" stroke-width="1">';
+  for(var x=0; x<=1400; x+=70){ svg += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="1143"/>'; }
+  for(var y=0; y<=1143; y+=70){ svg += '<line x1="0" y1="'+y+'" x2="1400" y2="'+y+'"/>'; }
+  svg += '</g>'
+    + '<rect x="420" y="500" width="560" height="150" rx="4" fill="#191d23" stroke="#31374a"/>'
+    + '<text x="700" y="555" font-family="monospace" font-size="24" fill="#8B929D" text-anchor="middle">' + label + '</text>'
+    + '<text x="700" y="590" font-family="monospace" font-size="14" fill="#5B6270" text-anchor="middle">sem plano de fundo definido</text>'
+    + '<text x="700" y="614" font-family="monospace" font-size="14" fill="#5B6270" text-anchor="middle">use "Mapas" para colar o link do Google My Maps ou subir uma imagem</text>'
+    + '</svg>';
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+const MAP_W_DEFAULT = 1400, MAP_H_DEFAULT = 1143;
+
+/* ================= Câmera geográfica (Google My Maps) =================
+   Em vez de fixar pontos/ruas/bairros em pixels da tela, mapas com fundo
+   "embed" (Google My Maps) guardam também latitude/longitude reais. A
+   câmera (centro lat/lng + zoom) é controlada pelo próprio app — nunca
+   pelo arrastar/zoom nativo do iframe do Google (que é de outra origem e
+   não pode ser lido por JavaScript). Assim, ao usar os controles de zoom
+   e o arraste do app, tudo (fundo + camadas) se reprojeta junto e
+   preserva a localização real de cada item. */
+const DEFAULT_CAMERA = {lat:-27.1536, lng:-48.5190, zoom:13}; // Porto Belo / Bombinhas — SC — usado só quando não há posição definida
+/* Câmera antiga (Chapecó), incorreta — usada para migrar automaticamente
+   estados já salvos no navegador que ficaram presos nessa posição por
+   nunca terem tido um ll=/z= customizado. */
+const LEGACY_DEFAULT_CAMERA = {lat:-27.0965, lng:-52.6183};
+function isLegacyDefaultCamera(cam){
+  return !!cam && typeof cam.lat==='number' && typeof cam.lng==='number'
+    && Math.abs(cam.lat-LEGACY_DEFAULT_CAMERA.lat)<0.01
+    && Math.abs(cam.lng-LEGACY_DEFAULT_CAMERA.lng)<0.01;
+}
+const MERC_TILE = 256;
+function ll2world(lat,lng){
+  const siny = Math.min(Math.max(Math.sin(lat*Math.PI/180), -0.9999), 0.9999);
+  return {
+    x: MERC_TILE*(0.5 + lng/360),
+    y: MERC_TILE*(0.5 - Math.log((1+siny)/(1-siny))/(4*Math.PI))
+  };
+}
+function world2ll(x,y){
+  const lng = (x/MERC_TILE - 0.5)*360;
+  const n = Math.PI - 2*Math.PI*(y/MERC_TILE);
+  const lat = 180/Math.PI * Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+  return {lat:lat, lng:lng};
+}
+/* lat/lng -> posição em pixels "de mapa" (mesmo espaço 0..d.w / 0..d.h usado por x,y) */
+function llToMapXY(lat,lng,camera,w,h){
+  const scale = Math.pow(2, camera.zoom);
+  const c = ll2world(camera.lat, camera.lng);
+  const p = ll2world(lat, lng);
+  return { x: w/2 + (p.x-c.x)*scale, y: h/2 + (p.y-c.y)*scale };
+}
+/* posição em pixels "de mapa" -> lat/lng */
+function mapXYToLL(x,y,camera,w,h){
+  const scale = Math.pow(2, camera.zoom);
+  const c = ll2world(camera.lat, camera.lng);
+  const wx = c.x + (x-w/2)/scale;
+  const wy = c.y + (y-h/2)/scale;
+  return world2ll(wx,wy);
+}
+/* extrai ll=/z= de um link de embed, se já estiverem presentes */
+function parseCameraFromEmbed(embedUrl){
+  if(!embedUrl) return null;
+  const ll = embedUrl.match(/[?&]ll=(-?\d+(?:\.\d+)?)[,\s](-?\d+(?:\.\d+)?)/i);
+  const z = embedUrl.match(/[?&]z=(\d+(?:\.\d+)?)/i);
+  if(ll){ return {lat:parseFloat(ll[1]), lng:parseFloat(ll[2]), zoom: z?parseFloat(z[1]):DEFAULT_CAMERA.zoom}; }
+  return null;
+}
+/* monta o src do iframe sempre com ll=/z= da câmera atual do mapa */
+function buildEmbedSrc(m){
+  const base = normalizeEmbedUrl(m.embedUrl);
+  if(!base) return '';
+  const cam = (m.camera && typeof m.camera.lat==='number') ? m.camera : DEFAULT_CAMERA;
+  try{
+    const u = new URL(base);
+    u.searchParams.set('ll', cam.lat.toFixed(6)+','+cam.lng.toFixed(6));
+    u.searchParams.set('z', String(Math.round(cam.zoom)));
+    return u.toString();
+  }catch(e){ return base; }
+}
+function activeIsEmbed(){
+  const m = getActiveMap();
+  return !!(m && m.backgroundMode==='embed' && m.camera);
+}
+/* lat/lng correspondente a um ponto (x,y) do mapa ativo, só quando o fundo é o Google My Maps */
+function currentMapLL(x,y){
+  const m = getActiveMap();
+  if(m && m.backgroundMode==='embed' && m.camera){
+    const d = mapDims();
+    return mapXYToLL(x,y,m.camera,d.w,d.h);
+  }
+  return null;
+}
+/* posição de exibição de um item (ponto/vértice): reprojeta a partir de lat/lng
+   quando o fundo é o Google My Maps; senão usa x,y gravados normalmente */
+function displayXY(obj, d, camera, isEmbed){
+  if(isEmbed && camera && typeof obj.lat==='number' && typeof obj.lng==='number'){
+    return llToMapXY(obj.lat, obj.lng, camera, d.w, d.h);
+  }
+  return {x:obj.x, y:obj.y};
+}
+function reloadEmbedFrame(){
+  const m = getActiveMap();
+  if(!m || m.backgroundMode!=='embed') return;
+  const iframe = document.getElementById('mapEmbedFrame');
+  const src = buildEmbedSrc(m);
+  iframe.src = src;
+  iframe.setAttribute('data-src', src);
+}
+
+/* ================= Ícones ================= */
+const ICONS = {
+  house: '<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9"/>',
+  alert: '<path d="M12 4L3 20h18L12 4z"/><path d="M12 10.5v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>',
+  star: '<path d="M12 3.5l2.55 5.4 5.95.75-4.4 4.15 1.15 5.9L12 16.9l-5.25 2.8 1.15-5.9-4.4-4.15 5.95-.75L12 3.5z" stroke-linejoin="round"/>',
+  camera: '<path d="M4 8h3l1.5-2.2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.4"/>',
+  car: '<path d="M4 16.5V12l2-5h12l2 5v4.5"/><path d="M4 16.5h16M6.5 16.5v2M17.5 16.5v2"/><circle cx="7.3" cy="16.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.7" cy="16.5" r="1.2" fill="currentColor" stroke="none"/>',
+  flag: '<path d="M6 21V4"/><path d="M6 5l12-1.5v11L6 16"/>',
+  shield: '<path d="M12 3.5l7 2.7v5.3c0 5-3 8.2-7 9.5-4-1.3-7-4.5-7-9.5V6.2l7-2.7z"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none"/>'
+};
+const ICON_LABELS = {house:'Casa', alert:'Alerta', star:'Estrela', camera:'Câmera', car:'Viatura', flag:'Bandeira', shield:'Escudo', target:'Alvo'};
+const ICON_KEYS = Object.keys(ICONS);
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function iconSvg(key){
+  const inner = ICONS[key] || ICONS.house;
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' + inner + '</svg>';
+}
+function iconOptions(selected){
+  return ICON_KEYS.map(function(k){ return '<option value="'+k+'" '+(k===selected?'selected':'')+'>'+ICON_LABELS[k]+'</option>'; }).join('');
+}
+function contrastColor(hex){
+  const c = hexToRgb(hex);
+  if(!c) return '#0B0D10';
+  const lum = (0.299*c.r + 0.587*c.g + 0.114*c.b)/255;
+  return lum > 0.58 ? '#12141A' : '#F4F5F7';
+}
+function hexToRgb(hex){
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex||'');
+  return m ? {r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16)} : null;
+}
+
+/* ================= Utils ================= */
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function esc(str){
+  return (str==null?'':String(str)).replace(/[&<>"']/g, function(s){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]; });
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  try{
+    const d = new Date(iso);
+    const pad = function(n){ return String(n).padStart(2,'0'); };
+    return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+  }catch(e){ return '—'; }
+}
+function fmtPop(n){
+  if(n===null || n===undefined || n==='') return 'sem dado';
+  const num = Number(n);
+  if(isNaN(num)) return 'sem dado';
+  return num.toLocaleString('pt-BR') + ' hab.';
+}
+function fileToDataUrl(file){
+  return new Promise(function(resolve,reject){
+    const r = new FileReader();
+    r.onload = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(new Error('Falha ao ler arquivo')); };
+    r.readAsDataURL(file);
+  });
+}
+function downscaleImage(dataUrl, maxDim){
+  return new Promise(function(resolve){
+    const img = new Image();
+    img.onload = function(){
+      let w = img.width, h = img.height;
+      if(w<=maxDim && h<=maxDim){ resolve({url:dataUrl, w:w, h:h}); return; }
+      const scale = maxDim / Math.max(w,h);
+      w = Math.round(w*scale); h = Math.round(h*scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      resolve({url:cv.toDataURL('image/jpeg', 0.85), w:w, h:h});
+    };
+    img.onerror = function(){ resolve({url:dataUrl, w:MAP_W_DEFAULT, h:MAP_H_DEFAULT}); };
+    img.src = dataUrl;
+  });
+}
+
+/* Aceita: <iframe src="...">, um link de "embed" pronto, ou o link de compartilhamento/edição
+   do My Maps (…/maps/d/u/0/edit?mid=XXX&usp=sharing) — este último é convertido automaticamente
+   para o formato de incorporação (…/maps/d/u/0/embed?mid=XXX). */
+function normalizeEmbedUrl(value){
+  const v = (value||'').trim();
+  if(!v) return '';
+  const iframeMatch = v.match(/src=["']([^"']+)["']/i);
+  let url = iframeMatch ? iframeMatch[1] : v;
+
+  const editMatch = url.match(/\/maps\/d\/(?:u\/\d+\/)?(?:edit|viewer)\?([^#]*)/i);
+  if(editMatch){
+    const params = new URLSearchParams(editMatch[1]);
+    const mid = params.get('mid');
+    if(mid){
+      url = 'https://www.google.com/maps/d/u/0/embed?mid=' + encodeURIComponent(mid) + '&ehbc=2E312F&noprof=1';
+    }
+  } else {
+    const embedMatch = url.match(/\/maps\/d\/(?:u\/\d+\/)?embed\?([^#]*)/i);
+    if(embedMatch){
+      const params = new URLSearchParams(embedMatch[1]);
+      if(!params.get('ehbc')) params.set('ehbc','2E312F');
+      if(!params.get('noprof')) params.set('noprof','1');
+      url = 'https://www.google.com/maps/d/u/0/embed?' + params.toString();
+    }
+  }
+  return url;
+}
+
+/* ================= Estado ================= */
+const STORAGE_KEY = 'mapa_operacional_pm_v5';
+
+const DEFAULT_CATEGORIES = [
+  {id:'cat_morador',     name:'Morador cadastrado',        color:'#4C8FD6', icon:'house'},
+  {id:'cat_risco',       name:'Potencial risco',           color:'#E0AA3D', icon:'alert'},
+  {id:'cat_crime',       name:'Ponto de crime/ocorrência', color:'#D6635A', icon:'target'},
+  {id:'cat_referencia',  name:'Ponto de referência',       color:'#8B929D', icon:'star'}
+];
+
+const BOMBINHA_BAIRROS = ['Bombas','Canto Grande','Centro','José Amândio','Mariscal','Morrinhos','Quatro Ilhas','Sertãozinho','Zimbros'];
+const PORTOBELO_BAIRROS = ['Centro','Perequê (Balneário Perequê)','Araçá','Vila Nova','Jardim Dourado','Santa Luzia','Cabeçudas'];
+
+function seedBairros(mapId, names){
+  return names.map(function(n){
+    return {id:uid(), mapId:mapId, name:n, population:null, notes:'', source:'', polygon:null, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
+  });
+}
+
+function freshState(){
+  const m1 = {
+    id:'map_bombinha', name:'Bombinha', image: buildPlaceholder('BOMBINHA'),
+    width: MAP_W_DEFAULT, height: MAP_H_DEFAULT,
+    source:'Divisão de bairros conforme Plano Diretor',
+    embedUrl:'', backgroundMode:'image'
+  };
+  const m2camEmbed = 'https://www.google.com/maps/d/u/0/embed?mid=1u9-p0Km5xgn6LVQgKuS8parAPvCiL7Y&ehbc=2E312F&noprof=1';
+  const m2cam = parseCameraFromEmbed(m2camEmbed) || Object.assign({}, DEFAULT_CAMERA);
+  const m2 = {
+    id:'map_portobelo', name:'Porto Belo', image: buildPlaceholder('PORTO BELO'),
+    width: MAP_W_DEFAULT, height: MAP_H_DEFAULT,
+    source:'Google My Maps',
+    embedUrl: m2camEmbed,
+    backgroundMode:'embed',
+    camera: m2cam,
+    homeCamera: Object.assign({}, m2cam)
+  };
+  return {
+    version:5,
+    battalionName:'',
+    maps:[m1, m2],
+    activeMapId: m2.id,
+    streetsVisible: true,
+    bairrosVisible: true,
+    categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+    points: [],
+    streets: [],
+    bairros: seedBairros(m1.id, BOMBINHA_BAIRROS).concat(seedBairros(m2.id, PORTOBELO_BAIRROS))
+  };
+}
+
+/* Mapas My Maps conhecidos deste projeto — usado para reparar automaticamente
+   um embedUrl ausente/quebrado em estados salvos antes desta correção. */
+const KNOWN_EMBEDS = {
+  'map_portobelo': 'https://www.google.com/maps/d/u/0/embed?mid=1u9-p0Km5xgn6LVQgKuS8parAPvCiL7Y&ehbc=2E312F&noprof=1'
+};
+function normalizeMaps(maps){
+  (maps||[]).forEach(function(m){
+    if(typeof m.embedUrl === 'undefined' || m.embedUrl===null) m.embedUrl = '';
+    if(typeof m.source === 'undefined' || m.source===null) m.source = '';
+    // Repara automaticamente mapas conhecidos que ficaram sem o link do My Maps
+    // (ex.: estado salvo no navegador antes de o link ter sido cadastrado).
+    if(!m.embedUrl && KNOWN_EMBEDS[m.id]){
+      m.embedUrl = KNOWN_EMBEDS[m.id];
+    }
+    if(typeof m.backgroundMode === 'undefined' || m.backgroundMode===null){
+      m.backgroundMode = m.embedUrl ? 'embed' : 'image';
+    }
+    if(!m.width) m.width = MAP_W_DEFAULT;
+    if(!m.height) m.height = MAP_H_DEFAULT;
+    if(!m.image) m.image = buildPlaceholder(m.name || 'MAPA');
+    if(!m.camera || typeof m.camera.lat!=='number'){
+      m.camera = parseCameraFromEmbed(m.embedUrl) || Object.assign({}, DEFAULT_CAMERA);
+    }
+    // Migração: mapas salvos antes desta correção podem ter ficado com a
+    // câmera antiga (Chapecó) só porque nunca foi customizada manualmente.
+    // Nesse caso, traz para a nova posição padrão (Porto Belo/Bombinhas).
+    if(isLegacyDefaultCamera(m.camera)){
+      m.camera = parseCameraFromEmbed(m.embedUrl) || Object.assign({}, DEFAULT_CAMERA);
+    }
+    if(!m.homeCamera || typeof m.homeCamera.lat!=='number' || isLegacyDefaultCamera(m.homeCamera)){
+      m.homeCamera = Object.assign({}, m.camera);
+    }
+  });
+  return maps;
+}
+/* Preenche lat/lng de pontos, vértices de ruas e de bairros que ainda não
+   têm (dados antigos, de antes desta correção). Melhor esforço: assume a
+   câmera atual do mapa como referência, já que não há como saber qual era
+   o enquadramento do Google no momento em que cada item foi cadastrado. */
+function migrateGeoData(){
+  const camByMap = {};
+  state.maps.forEach(function(m){
+    if(m.backgroundMode==='embed' && m.camera) camByMap[m.id] = {cam:m.camera, w:m.width||MAP_W_DEFAULT, h:m.height||MAP_H_DEFAULT};
+  });
+  state.points.forEach(function(p){
+    const ref = camByMap[p.mapId];
+    if(ref && typeof p.lat!=='number'){
+      const ll = mapXYToLL(p.x,p.y,ref.cam,ref.w,ref.h);
+      p.lat = ll.lat; p.lng = ll.lng;
+    }
+  });
+  state.streets.forEach(function(s){
+    const ref = camByMap[s.mapId];
+    if(!ref || !Array.isArray(s.points)) return;
+    s.points.forEach(function(pt){
+      if(typeof pt.lat!=='number'){
+        const ll = mapXYToLL(pt.x,pt.y,ref.cam,ref.w,ref.h);
+        pt.lat = ll.lat; pt.lng = ll.lng;
+      }
+    });
+  });
+  state.bairros.forEach(function(b){
+    const ref = camByMap[b.mapId];
+    if(!ref || !Array.isArray(b.polygon)) return;
+    b.polygon.forEach(function(pt){
+      if(typeof pt.lat!=='number'){
+        const ll = mapXYToLL(pt.x,pt.y,ref.cam,ref.w,ref.h);
+        pt.lat = ll.lat; pt.lng = ll.lng;
+      }
+    });
+  });
+}
+function normalizeBairros(bairros){
+  (bairros||[]).forEach(function(b){
+    if(typeof b.population === 'undefined') b.population = null;
+    if(typeof b.notes === 'undefined') b.notes = '';
+    if(typeof b.source === 'undefined') b.source = '';
+  });
+  return bairros;
+}
+
+function loadState(){
+  try{
+    const candidates = [STORAGE_KEY, 'mapa_operacional_pm_v4', 'mapa_operacional_pm_v3', 'mapa_operacional_pm_v2'];
+    for(let i=0;i<candidates.length;i++){
+      const raw = localStorage.getItem(candidates[i]);
+      if(!raw) continue;
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.maps) && parsed.maps.length && parsed.categories && parsed.points && parsed.streets){
+        if(typeof parsed.streetsVisible === 'undefined') parsed.streetsVisible = true;
+        if(typeof parsed.bairrosVisible === 'undefined') parsed.bairrosVisible = true;
+        if(!Array.isArray(parsed.bairros)) parsed.bairros = [];
+        parsed.maps = normalizeMaps(parsed.maps);
+        parsed.bairros = normalizeBairros(parsed.bairros);
+        parsed.version = 5;
+        return parsed;
+      }
+    }
+    const legacyRaw = localStorage.getItem('mapa_operacional_pm_v1');
+    if(legacyRaw){
+      const old = JSON.parse(legacyRaw);
+      if(old && old.mapImage && old.categories && old.points && old.streets){
+        const legacyMap = {id:'map_legacy', name:'Mapa importado', image: old.mapImage, width: MAP_W_DEFAULT, height: MAP_H_DEFAULT, source:'', embedUrl:'', backgroundMode:'image'};
+        return {
+          version:5,
+          battalionName: old.battalionName || '',
+          maps:[legacyMap],
+          activeMapId: legacyMap.id,
+          streetsVisible: true,
+          bairrosVisible: true,
+          categories: old.categories,
+          points: old.points.map(function(p){ p.mapId = legacyMap.id; return p; }),
+          streets: old.streets.map(function(s){ s.mapId = legacyMap.id; return s; }),
+          bairros: []
+        };
+      }
+    }
+  }catch(e){ /* localStorage indisponível — segue apenas em memória */ }
+  return freshState();
+}
+
+let state = loadState();
+migrateGeoData();
+let saveFailNotified = false;
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    saveFailNotified = false;
+  }catch(e){
+    if(!saveFailNotified){
+      saveFailNotified = true;
+      toast('Não foi possível salvar automaticamente (armazenamento cheio ou indisponível). Use "Exportar backup".');
+    }
+  }
+}
+
+function getCategory(id){
+  return state.categories.find(function(c){ return c.id===id; }) || state.categories[0] || DEFAULT_CATEGORIES[0];
+}
+function getActiveMap(){
+  return state.maps.find(function(m){ return m.id===state.activeMapId; }) || state.maps[0];
+}
+/* Em mapas "embed" (Google My Maps) o canvas preenche a área disponível da
+   tela (responsivo) em vez de ter um tamanho fixo em pixels. Para que a
+   reprojeção lat/lng -> pixel bata exatamente com o que o Google desenha
+   (e os pontos fiquem "presos" ao lugar real, como no My Maps nativo), o
+   espaço de coordenadas usado em TODA a matemática de projeção precisa ser
+   o tamanho real, em pixels de tela, do canvas — não um valor fixo como
+   1400x1143. Por isso, para mapas embed, mapDims() mede o elemento ao vivo
+   (com um cache do último valor válido, para nunca devolver 0 durante uma
+   troca de layout momentânea). Mapas de imagem estática continuam usando o
+   espaço de coordenadas fixo de sempre (m.width/m.height), que é apenas uma
+   ampliação visual de um fundo fixo e não precisa bater com pixels reais. */
+let _lastEmbedDims = { w: MAP_W_DEFAULT, h: MAP_H_DEFAULT };
+function mapDims(){
+  const m = getActiveMap();
+  if(m && m.backgroundMode==='embed' && m.embedUrl){
+    const canvas = document.getElementById('mapCanvas');
+    if(canvas){
+      const rect = canvas.getBoundingClientRect();
+      if(rect.width>0 && rect.height>0){
+        _lastEmbedDims = { w: rect.width, h: rect.height };
+      }
+    }
+    return _lastEmbedDims;
+  }
+  return { w: (m && m.width) || MAP_W_DEFAULT, h: (m && m.height) || MAP_H_DEFAULT };
+}
+
+/* ================= Estado de visualização (não persistido) ================= */
+let mode = 'select';
+let draftStreetPoints = [];
+let draftBairroPoints = [];
+let pendingBairroId = null;
+let selectedPointId = null;
+let selectedStreetId = null;
+let selectedBairroId = null;
+let categoryFilter = new Set(state.categories.map(function(c){ return c.id; }));
+let searchQuery = '';
+let zoomState = 1;
+let dragCtx = null;
+let panCtx = null;
+let panMoved = false;
+const BASE_DISPLAY_W = 1300;
+
+function getCanvasPoint(e){
+  const d = mapDims();
+  const canvas = document.getElementById('mapCanvas');
+  const rect = canvas.getBoundingClientRect();
+  let x = (e.clientX-rect.left)/rect.width*d.w;
+  let y = (e.clientY-rect.top)/rect.height*d.h;
+  x = Math.max(0, Math.min(d.w, x));
+  y = Math.max(0, Math.min(d.h, y));
+  return {x:Math.round(x), y:Math.round(y)};
+}
+
+/* ---------- Render: seletor de mapa ---------- */
+function renderMapSelector(){
+  const sel = document.getElementById('mapSelector');
+  sel.innerHTML = state.maps.map(function(m){
+    return '<option value="'+m.id+'" '+(m.id===state.activeMapId?'selected':'')+'>'+esc(m.name)+'</option>';
+  }).join('');
+  const active = getActiveMap();
+  const badge = document.getElementById('mapBadge');
+  if(active){ badge.textContent = active.name + (active.source ? ' · ' + active.source : ''); }
+}
+
+/* Link "editar/compartilhar" do My Maps, derivado do mid — usado no aviso de ajuda
+   e no botão "Abrir no Google My Maps" (funciona mesmo que o embed esteja bloqueado). */
+function myMapsEditUrl(embedUrl){
+  const m = (embedUrl||'').match(/[?&]mid=([^&]+)/);
+  if(!m) return 'https://www.google.com/maps/d/u/0/';
+  return 'https://www.google.com/maps/d/u/0/edit?mid=' + m[1] + '&usp=sharing';
+}
+let embedHelpTimer = null;
+function hideEmbedHelp(){
+  clearTimeout(embedHelpTimer);
+  document.getElementById('embedHelp').classList.add('hidden');
+}
+/* ---------- Render: fundo do mapa (embed do My Maps ou imagem) ---------- */
+function renderMapBackground(){
+  const m = getActiveMap();
+  const iframe = document.getElementById('mapEmbedFrame');
+  const img = document.getElementById('mapImage');
+  const canvas = document.getElementById('mapCanvas');
+  const useEmbed = m && m.backgroundMode === 'embed' && m.embedUrl;
+  hideEmbedHelp();
+
+  if(useEmbed){
+    const src = buildEmbedSrc(m);
+    if(iframe.getAttribute('data-src') !== src){
+      iframe.src = src;
+      iframe.setAttribute('data-src', src);
+    }
+    iframe.classList.remove('bg-hidden');
+    img.classList.add('bg-hidden');
+    canvas.classList.remove('embed-interactive');
+    canvas.classList.add('embed-locked');
+    document.getElementById('overlaySvg').setAttribute('viewBox', '0 0 '+mapDims().w+' '+mapDims().h);
+    document.getElementById('bairroSvg').setAttribute('viewBox', '0 0 '+mapDims().w+' '+mapDims().h);
+    applyZoom();
+    renderMarkers(); renderStreets(); renderBairroPolygons();
+    // Navegadores não avisam via JS quando o Google bloqueia um embed do My Maps
+    // não-público (o iframe carrega uma página de erro silenciosamente). Por isso,
+    // mostramos um aviso de apoio com um atalho para o mapa original caso, depois
+    // de alguns segundos, o usuário ainda esteja com a tela em branco.
+    document.getElementById('embedOpenBtn').onclick = function(){
+      window.open(myMapsEditUrl(m.embedUrl), '_blank', 'noopener');
+    };
+    document.getElementById('embedReloadBtn').onclick = function(){
+      iframe.removeAttribute('data-src');
+      iframe.src = src;
+      iframe.setAttribute('data-src', src);
+    };
+    embedHelpTimer = setTimeout(function(){
+      document.getElementById('embedHelp').classList.remove('hidden');
+    }, 5000);
+  }else{
+    iframe.classList.add('bg-hidden');
+    img.classList.remove('bg-hidden');
+    canvas.classList.remove('embed-interactive');
+    canvas.classList.add('embed-locked');
+    img.onload = function(){
+      document.getElementById('overlaySvg').setAttribute('viewBox', '0 0 '+mapDims().w+' '+mapDims().h);
+      document.getElementById('bairroSvg').setAttribute('viewBox', '0 0 '+mapDims().w+' '+mapDims().h);
+      applyZoom();
+      renderMarkers(); renderStreets(); renderBairroPolygons();
+    };
+    img.src = m ? m.image : buildPlaceholder('MAPA');
+  }
+}
+document.getElementById('embedHelpClose').addEventListener('click', hideEmbedHelp);
+
+/* ---------- Render: camadas (ruas + bairros + categorias) ---------- */
+function renderLayers(){
+  const wrap = document.getElementById('categoryFilters');
+  const activePoints = state.points.filter(function(p){ return p.mapId===state.activeMapId; });
+  const activeStreets = state.streets.filter(function(s){ return s.mapId===state.activeMapId; });
+  const streetsOn = state.streetsVisible !== false;
+  const streetRow = '<div class="cat-filter-row" id="streetsToggleRow">'
+    + '<span class="cat-check '+(streetsOn?'checked':'')+'">'+(streetsOn?CHECK_SVG:'')+'</span>'
+    + '<span class="cat-dot" style="background:#D8DBE0"></span>'
+    + '<span class="cat-filter-name">Ruas / traçado</span>'
+    + '<span class="cat-filter-count">'+activeStreets.length+'</span>'
+    + '</div>';
+  const bairrosOn = state.bairrosVisible !== false;
+  const activeBairros = state.bairros.filter(function(b){ return b.mapId===state.activeMapId; });
+  const bairrosComContorno = activeBairros.filter(function(b){ return b.polygon && b.polygon.length>=3; }).length;
+  const bairroRow = '<div class="cat-filter-row" id="bairrosToggleRow">'
+    + '<span class="cat-check '+(bairrosOn?'checked':'')+'">'+(bairrosOn?CHECK_SVG:'')+'</span>'
+    + '<span class="cat-dot" style="background:#C98A3D"></span>'
+    + '<span class="cat-filter-name">Divisão de bairros</span>'
+    + '<span class="cat-filter-count">'+bairrosComContorno+'/'+activeBairros.length+'</span>'
+    + '</div>';
+  const rows = state.categories.map(function(cat){
+    const count = activePoints.filter(function(p){ return p.categoryId===cat.id; }).length;
+    const checked = categoryFilter.has(cat.id);
+    return '<div class="cat-filter-row" data-cat="'+cat.id+'">'
+      + '<span class="cat-check '+(checked?'checked':'')+'">'+(checked?CHECK_SVG:'')+'</span>'
+      + '<span class="cat-dot" style="background:'+cat.color+'"></span>'
+      + '<span class="cat-filter-name">'+esc(cat.name)+'</span>'
+      + '<span class="cat-filter-count">'+count+'</span>'
+      + '</div>';
+  }).join('');
+  wrap.innerHTML = '<div class="section-label"><span>Camadas</span></div>' + bairroRow + streetRow + '<div class="layer-divider"></div>' + rows;
+  document.getElementById('streetsToggleRow').addEventListener('click', function(){
+    state.streetsVisible = (state.streetsVisible===false) ? true : false;
+    saveState(); renderLayers(); renderStreets();
+  });
+  document.getElementById('bairrosToggleRow').addEventListener('click', function(){
+    state.bairrosVisible = (state.bairrosVisible===false) ? true : false;
+    saveState(); renderLayers(); renderBairroPolygons();
+  });
+  wrap.querySelectorAll('.cat-filter-row[data-cat]').forEach(function(row){
+    row.addEventListener('click', function(){
+      const id = row.dataset.cat;
+      if(categoryFilter.has(id)) categoryFilter.delete(id); else categoryFilter.add(id);
+      renderLayers(); renderPointList(); renderMarkers();
+    });
+  });
+}
+
+/* ---------- Render: lista de pontos ---------- */
+function matchesSearch(p, q){
+  if(!q) return true;
+  const hay = [p.name,p.description,p.registro,p.address].filter(Boolean).join(' ').toLowerCase();
+  return hay.includes(q);
+}
+function renderPointList(){
+  const listEl = document.getElementById('pointList');
+  const q = searchQuery.trim().toLowerCase();
+  const mapPoints = state.points.filter(function(p){ return p.mapId===state.activeMapId; });
+  const visible = mapPoints.filter(function(p){ return categoryFilter.has(p.categoryId) && matchesSearch(p,q); })
+    .sort(function(a,b){ return (a.name||'').localeCompare(b.name||'', 'pt-BR'); });
+  document.getElementById('pointCountLabel').textContent = mapPoints.length;
+  if(visible.length===0){
+    listEl.innerHTML = mapPoints.length===0
+      ? '<div class="empty-hint">Nenhum ponto cadastrado neste mapa ainda.<br>Use "Novo ponto" na barra de ferramentas para começar.</div>'
+      : '<div class="empty-hint">Nenhum ponto encontrado com os filtros atuais.</div>';
+    return;
+  }
+  listEl.innerHTML = visible.map(function(p){
+    const cat = getCategory(p.categoryId);
+    return '<div class="point-row '+(p.id===selectedPointId?'active':'')+'" data-id="'+p.id+'">'
+      + '<span class="point-icon-sm" style="background:'+cat.color+';color:'+contrastColor(cat.color)+'">'+iconSvg(cat.icon)+'</span>'
+      + '<span class="point-row-text">'
+      + '<div class="point-row-name">'+esc(p.name||'Sem nome')+'</div>'
+      + '<div class="point-row-cat">'+esc(cat.name)+'</div>'
+      + '</span></div>';
+  }).join('');
+  listEl.querySelectorAll('.point-row').forEach(function(row){
+    row.addEventListener('click', function(){ openPointDrawer(row.dataset.id); });
+  });
+}
+
+/* ---------- Render: marcadores no mapa ---------- */
+function renderMarkers(){
+  const layer = document.getElementById('markersLayer');
+  const q = searchQuery.trim().toLowerCase();
+  const d = mapDims();
+  const m = getActiveMap();
+  const isEmbed = !!(m && m.backgroundMode==='embed' && m.camera);
+  const camera = m && m.camera;
+  layer.innerHTML = '';
+  state.points.forEach(function(p){
+    if(p.mapId !== state.activeMapId) return;
+    if(!categoryFilter.has(p.categoryId)) return;
+    if(!matchesSearch(p,q)) return;
+    const cat = getCategory(p.categoryId);
+    const pos = displayXY(p, d, camera, isEmbed);
+    const el = document.createElement('div');
+    el.className = 'marker' + (p.id===selectedPointId?' selected':'');
+    el.style.left = (pos.x/d.w*100)+'%';
+    el.style.top = (pos.y/d.h*100)+'%';
+    el.dataset.id = p.id;
+    el.innerHTML = '<span class="marker-pin" style="background:'+cat.color+';color:'+contrastColor(cat.color)+'">'+iconSvg(cat.icon)+'</span><span class="marker-label">'+esc(p.name||'Sem nome')+'</span>';
+    el.addEventListener('mousedown', onMarkerMouseDown);
+    layer.appendChild(el);
+  });
+}
+
+/* ---------- Render: ruas ---------- */
+function renderStreets(){
+  const svg = document.getElementById('overlaySvg');
+  svg.classList.toggle('layer-hidden', state.streetsVisible===false);
+  const d = mapDims();
+  const m = getActiveMap();
+  const isEmbed = !!(m && m.backgroundMode==='embed' && m.camera);
+  const camera = m && m.camera;
+  let html = '';
+  state.streets.forEach(function(s){
+    if(s.mapId !== state.activeMapId) return;
+    const proj = s.points.map(function(pt){ return displayXY(pt, d, camera, isEmbed); });
+    const pts = proj.map(function(pt){ return pt.x+','+pt.y; }).join(' ');
+    const selected = s.id===selectedStreetId;
+    html += '<polyline class="street-hit" data-id="'+s.id+'" points="'+pts+'"></polyline>';
+    html += '<polyline class="street '+(selected?'selected':'')+'" data-id="'+s.id+'" points="'+pts+'"></polyline>';
+    if(selected){
+      proj.forEach(function(pt,idx){
+        html += '<circle class="vertex-handle" data-street="'+s.id+'" data-idx="'+idx+'" cx="'+pt.x+'" cy="'+pt.y+'" r="7"></circle>';
+      });
+    }
+  });
+  if(mode==='draw-street' && draftStreetPoints.length){
+    const projDraft = draftStreetPoints.map(function(pt){ return displayXY(pt, d, camera, isEmbed); });
+    const pts = projDraft.map(function(pt){ return pt.x+','+pt.y; }).join(' ');
+    html += '<polyline class="draft-street" points="'+pts+'"></polyline>';
+    projDraft.forEach(function(pt){
+      html += '<circle class="vertex-handle" cx="'+pt.x+'" cy="'+pt.y+'" r="5" style="pointer-events:none;"></circle>';
+    });
+  }
+  svg.innerHTML = html;
+  svg.querySelectorAll('.street-hit').forEach(function(el){
+    el.addEventListener('click', function(e){ e.stopPropagation(); if(mode==='select') selectStreet(el.dataset.id); });
+  });
+  svg.querySelectorAll('.vertex-handle[data-street]').forEach(function(el){
+    el.addEventListener('mousedown', onVertexMouseDown);
+  });
+}
+
+/* ---------- Render: bairros (polígonos + rótulo com população) ---------- */
+function polygonCentroid(pts){
+  let x=0,y=0;
+  pts.forEach(function(p){ x+=p.x; y+=p.y; });
+  return {x: x/pts.length, y: y/pts.length};
+}
+function renderBairroPolygons(){
+  const svg = document.getElementById('bairroSvg');
+  svg.classList.toggle('layer-hidden', state.bairrosVisible===false);
+  const d = mapDims();
+  const m = getActiveMap();
+  const isEmbed = !!(m && m.backgroundMode==='embed' && m.camera);
+  const camera = m && m.camera;
+  let html = '';
+  state.bairros.forEach(function(b){
+    if(b.mapId !== state.activeMapId) return;
+    if(!b.polygon || b.polygon.length < 3) return;
+    const proj = b.polygon.map(function(pt){ return displayXY(pt, d, camera, isEmbed); });
+    const pts = proj.map(function(pt){ return pt.x+','+pt.y; }).join(' ');
+    const selected = b.id===selectedBairroId;
+    html += '<polygon class="bairro-hit" data-id="'+b.id+'" points="'+pts+'"></polygon>';
+    html += '<polygon class="bairro '+(selected?'selected':'')+'" data-id="'+b.id+'" points="'+pts+'"></polygon>';
+    const c = polygonCentroid(proj);
+    html += '<text class="bairro-label" x="'+c.x+'" y="'+(c.y-4)+'" text-anchor="middle">'+esc(b.name||'Bairro')+'</text>';
+    html += '<text class="bairro-label-sub" x="'+c.x+'" y="'+(c.y+13)+'" text-anchor="middle">'+esc(fmtPop(b.population))+'</text>';
+    if(selected){
+      proj.forEach(function(pt,idx){
+        html += '<circle class="vertex-handle" data-bairro="'+b.id+'" data-idx="'+idx+'" cx="'+pt.x+'" cy="'+pt.y+'" r="7"></circle>';
+      });
+    }
+  });
+  if(mode==='draw-bairro' && draftBairroPoints.length){
+    const projDraft = draftBairroPoints.map(function(pt){ return displayXY(pt, d, camera, isEmbed); });
+    const pts = projDraft.map(function(pt){ return pt.x+','+pt.y; }).join(' ');
+    html += '<polyline class="draft-street" points="'+pts+'"></polyline>';
+    projDraft.forEach(function(pt){
+      html += '<circle class="vertex-handle" cx="'+pt.x+'" cy="'+pt.y+'" r="5" style="pointer-events:none;"></circle>';
+    });
+  }
+  svg.innerHTML = html;
+  svg.querySelectorAll('.bairro-hit').forEach(function(el){
+    el.addEventListener('click', function(e){ e.stopPropagation(); if(mode==='select') selectBairro(el.dataset.id); });
+  });
+  svg.querySelectorAll('.vertex-handle[data-bairro]').forEach(function(el){
+    el.addEventListener('mousedown', onBairroVertexMouseDown);
+  });
+}
+function onBairroVertexMouseDown(e){
+  e.stopPropagation();
+  const bairroId = e.currentTarget.dataset.bairro;
+  const idx = parseInt(e.currentTarget.dataset.idx,10);
+  dragCtx = {type:'bairro-vertex', bairroId:bairroId, idx:idx, moved:false};
+  window.addEventListener('mousemove', onBairroVertexMove);
+  window.addEventListener('mouseup', onBairroVertexUp);
+}
+let _bairroVertexMoveRaf = null;
+function onBairroVertexMove(e){
+  if(!dragCtx || dragCtx.type!=='bairro-vertex') return;
+  dragCtx.moved = true;
+  dragCtx.lastEvent = e;
+  if(_bairroVertexMoveRaf) return;
+  _bairroVertexMoveRaf = requestAnimationFrame(function(){
+    _bairroVertexMoveRaf = null;
+    if(!dragCtx || dragCtx.type!=='bairro-vertex') return;
+    const pt = getCanvasPoint(dragCtx.lastEvent);
+    const ll = currentMapLL(pt.x, pt.y);
+    if(ll){ pt.lat = ll.lat; pt.lng = ll.lng; }
+    const b = state.bairros.find(function(bb){ return bb.id===dragCtx.bairroId; });
+    if(b){ b.polygon[dragCtx.idx] = pt; renderBairroPolygons(); }
+  });
+}
+function onBairroVertexUp(){
+  window.removeEventListener('mousemove', onBairroVertexMove);
+  window.removeEventListener('mouseup', onBairroVertexUp);
+  if(_bairroVertexMoveRaf){ cancelAnimationFrame(_bairroVertexMoveRaf); _bairroVertexMoveRaf=null; }
+  if(dragCtx && dragCtx.type==='bairro-vertex' && dragCtx.moved){
+    const b = state.bairros.find(function(bb){ return bb.id===dragCtx.bairroId; });
+    if(b){ b.updatedAt=new Date().toISOString(); saveState(); }
+  }
+  dragCtx = null;
+}
+function selectBairro(id){
+  selectedBairroId = id;
+  selectedPointId = null;
+  selectedStreetId = null;
+  renderBairroPolygons(); renderMarkers(); renderStreets();
+  openBairroDrawer(id);
+}
+
+function renderAll(){
+  renderMapSelector();
+  renderMapBackground();
+  renderLayers();
+  renderPointList();
+  renderMarkers();
+  renderStreets();
+  renderBairroPolygons();
+  document.getElementById('battalionInput').value = state.battalionName || '';
+}
+
+/* ---------- Modo / ferramentas ---------- */
+function setMode(m){
+  mode = m;
+  draftStreetPoints = [];
+  draftBairroPoints = [];
+  document.querySelectorAll('.tool-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode===m); });
+  const canvas = document.getElementById('mapCanvas');
+  canvas.classList.remove('mode-select','mode-add-point','mode-draw-street');
+  canvas.classList.add(m==='draw-bairro' ? 'mode-draw-street' : 'mode-'+m);
+  const hint = document.getElementById('toolbarHint');
+  hint.textContent = m==='add-point' ? 'clique no mapa para posicionar o novo ponto'
+    : m==='draw-street' ? 'clique para adicionar vértices · Enter conclui · Esc cancela'
+    : m==='draw-bairro' ? 'clique para desenhar o contorno do bairro · Enter fecha o polígono · Esc cancela'
+    : '';
+  document.getElementById('draftControls').classList.toggle('hidden', m!=='draw-street' && m!=='draw-bairro');
+  if(m!=='select'){ closeDrawers(); }
+  renderStreets();
+  renderBairroPolygons();
+}
+document.getElementById('toolSelect').addEventListener('click', function(){ setMode('select'); });
+document.getElementById('toolAddPoint').addEventListener('click', function(){ setMode('add-point'); });
+document.getElementById('toolDrawStreet').addEventListener('click', function(){ setMode('draw-street'); });
+document.getElementById('toolDrawBairro').addEventListener('click', function(){ pendingBairroId = null; setMode('draw-bairro'); toast('Desenhe o contorno; ao concluir você escolhe a qual bairro ele pertence.'); });
+document.getElementById('draftFinish').addEventListener('click', function(){ if(mode==='draw-bairro') finishDraftBairro(); else finishDraftStreet(); });
+document.getElementById('draftCancel').addEventListener('click', function(){ if(mode==='draw-bairro') cancelDraftBairro(); else cancelDraftStreet(); });
+
+function updateDraftControls(){
+  document.getElementById('draftLabel').textContent = mode==='draw-bairro'
+    ? (draftBairroPoints.length + ' vértice(s) do contorno')
+    : (draftStreetPoints.length + ' ponto(s) na rua');
+}
+function finishDraftStreet(){
+  if(draftStreetPoints.length < 2){ toast('Adicione ao menos 2 pontos para criar uma rua.'); return; }
+  const s = { id: uid(), mapId: state.activeMapId, name:'', points: draftStreetPoints.slice(), createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+  state.streets.push(s);
+  draftStreetPoints = [];
+  saveState();
+  setMode('select');
+  selectedStreetId = s.id;
+  renderStreets();
+  renderLayers();
+  openStreetDrawer(s.id);
+}
+function cancelDraftStreet(){
+  draftStreetPoints = [];
+  setMode('select');
+  renderStreets();
+}
+function finishDraftBairro(){
+  if(draftBairroPoints.length < 3){ toast('Desenhe ao menos 3 pontos para fechar o contorno do bairro.'); return; }
+  const polygon = draftBairroPoints.slice();
+  draftBairroPoints = [];
+  setMode('select');
+  if(pendingBairroId){
+    const b = state.bairros.find(function(x){ return x.id===pendingBairroId; });
+    if(b){ b.polygon = polygon; b.updatedAt = new Date().toISOString(); saveState(); selectedBairroId=b.id; renderBairroPolygons(); renderLayers(); openBairroDrawer(b.id); }
+    pendingBairroId = null;
+    return;
+  }
+  openBairroAssignModal(polygon);
+}
+function cancelDraftBairro(){
+  draftBairroPoints = [];
+  pendingBairroId = null;
+  setMode('select');
+  renderBairroPolygons();
+}
+function openBairroAssignModal(polygon){
+  const mapBairros = state.bairros.filter(function(b){ return b.mapId===state.activeMapId; });
+  const options = mapBairros.map(function(b){
+    const has = b.polygon && b.polygon.length>=3;
+    return '<option value="'+b.id+'">'+esc(b.name||'Sem nome')+(has?' (substituirá contorno atual)':'')+'</option>';
+  }).join('');
+  openModal(
+    'Vincular contorno a um bairro',
+    '<div class="field"><label class="field-label">Bairro existente</label>'
+    + '<select class="field-select" id="am_existing"><option value="">— criar novo bairro —</option>'+options+'</select></div>'
+    + '<div class="field" id="am_new_wrap"><label class="field-label">Nome do novo bairro</label>'
+    + '<input type="text" class="field-input" id="am_new_name" placeholder="ex.: Loteamento Vista Mar"></div>',
+    [
+      {label:'Cancelar', kind:'ghost', onClick:function(){ closeModal(); renderBairroPolygons(); }},
+      {label:'Salvar contorno', kind:'primary', onClick:function(){
+        const existingId = document.getElementById('am_existing').value;
+        const newName = document.getElementById('am_new_name').value.trim();
+        let b;
+        if(existingId){
+          b = state.bairros.find(function(x){ return x.id===existingId; });
+        }else{
+          if(!newName){ toast('Informe um nome para o novo bairro.'); return; }
+          b = {id:uid(), mapId:state.activeMapId, name:newName, population:null, notes:'', source:'', polygon:null, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
+          state.bairros.push(b);
+        }
+        b.polygon = polygon;
+        b.updatedAt = new Date().toISOString();
+        saveState();
+        closeModal();
+        selectedBairroId = b.id;
+        renderBairroPolygons(); renderLayers();
+        openBairroDrawer(b.id);
+      }}
+    ]
+  );
+  document.getElementById('am_existing').addEventListener('change', function(e){
+    document.getElementById('am_new_wrap').classList.toggle('hidden', !!e.target.value);
+  });
+}
+
+/* ---------- Interação com o canvas: pan, clique, criar ponto/rua ----------
+   Em mapas com fundo "Google My Maps", arrastar no modo Selecionar NÃO
+   rola a tela — move a câmera geográfica (o app recalcula tudo e recarrega
+   o Google Maps já centralizado no novo lugar, mantendo pontos/ruas/bairros
+   alinhados). Em mapas com imagem estática, o comportamento antigo de
+   rolar a viewport continua igual. */
+let _panRaf = null;
+function startPan(e){
+  const canvas = document.getElementById('mapCanvas');
+  const overlay = document.getElementById('overlayLayers');
+  panMoved = false;
+  if(activeIsEmbed()){
+    panCtx = {embed:true, startX:e.clientX, startY:e.clientY, lastDx:0, lastDy:0};
+    canvas.classList.add('panning');
+    overlay.classList.add('panning');
+    window.addEventListener('mousemove', onPanMove);
+    window.addEventListener('mouseup', onPanEnd);
+    return;
+  }
+  const viewport = document.getElementById('mapViewport');
+  panCtx = {embed:false, startX:e.clientX, startY:e.clientY, scrollLeft:viewport.scrollLeft, scrollTop:viewport.scrollTop};
+  canvas.classList.add('panning');
+  window.addEventListener('mousemove', onPanMove);
+  window.addEventListener('mouseup', onPanEnd);
+}
+function onPanMove(e){
+  if(!panCtx) return;
+  const dx = e.clientX - panCtx.startX;
+  const dy = e.clientY - panCtx.startY;
+  if(Math.abs(dx)>3 || Math.abs(dy)>3) panMoved = true;
+  if(panCtx.embed){
+    // A "janela" do iframe (#mapCanvas / #mapEmbedFrame) nunca é tocada aqui —
+    // fica sempre fixa. Só a camada de conteúdo (#overlayLayers: pontos, ruas,
+    // bairros) segue o mouse, e isso é agrupado num único requestAnimationFrame
+    // por quadro (em vez de a cada mousemove) para não travar o navegador.
+    panCtx.lastDx = dx; panCtx.lastDy = dy;
+    if(_panRaf) return;
+    _panRaf = requestAnimationFrame(function(){
+      _panRaf = null;
+      if(!panCtx || !panCtx.embed) return;
+      document.getElementById('overlayLayers').style.transform = 'translate3d('+panCtx.lastDx+'px,'+panCtx.lastDy+'px,0)';
+    });
+    return;
+  }
+  const viewport = document.getElementById('mapViewport');
+  viewport.scrollLeft = panCtx.scrollLeft - dx;
+  viewport.scrollTop = panCtx.scrollTop - dy;
+}
+function onPanEnd(e){
+  const canvas = document.getElementById('mapCanvas');
+  const overlay = document.getElementById('overlayLayers');
+  const wasEmbed = panCtx && panCtx.embed;
+  let dx=0, dy=0;
+  if(wasEmbed && e){ dx = e.clientX-panCtx.startX; dy = e.clientY-panCtx.startY; }
+  canvas.classList.remove('panning');
+  overlay.classList.remove('panning');
+  window.removeEventListener('mousemove', onPanMove);
+  window.removeEventListener('mouseup', onPanEnd);
+  if(_panRaf){ cancelAnimationFrame(_panRaf); _panRaf=null; }
+  overlay.style.transform = '';
+  if(wasEmbed && (Math.abs(dx)>3 || Math.abs(dy)>3)){
+    const m = getActiveMap();
+    const rect = canvas.getBoundingClientRect();
+    // Usa o tamanho real (ao vivo) do canvas, não mapDims() em cache — evita
+    // qualquer descompasso entre o pixel arrastado na tela e o pixel usado
+    // para calcular o novo centro geográfico.
+    const centerXY = {x: rect.width/2 - dx, y: rect.height/2 - dy};
+    const ll = mapXYToLL(centerXY.x, centerXY.y, m.camera, rect.width, rect.height);
+    m.camera.lat = ll.lat; m.camera.lng = ll.lng;
+    saveState();
+    // As camadas (pontos, ruas, bairros) já são recalculadas AGORA, a partir
+    // da câmera nova — não esperam o Google Maps recarregar. O iframe (fundo)
+    // é atualizado em paralelo, em segundo plano, sem travar a interface.
+    renderMarkers(); renderStreets(); renderBairroPolygons();
+    reloadEmbedFrame();
+  }
+  panCtx = null;
+  setTimeout(function(){ panMoved=false; }, 0);
+}
+function onCanvasMouseDown(e){
+  if(e.target.closest('.marker') || e.target.closest('.vertex-handle')) return;
+  if(mode==='select'){
+    if(e.target.closest('.street-hit') || e.target.closest('.bairro-hit')) return;
+    startPan(e);
+  }
+}
+function onCanvasClick(e){
+  if(panMoved) return;
+  if(e.target.closest('.marker') || e.target.closest('.vertex-handle') || e.target.closest('.street-hit') || e.target.closest('.bairro-hit')) return;
+  const pt = getCanvasPoint(e);
+  const ll = currentMapLL(pt.x, pt.y);
+  if(ll){ pt.lat = ll.lat; pt.lng = ll.lng; }
+  if(mode==='add-point'){
+    createPointAt(pt.x, pt.y);
+  } else if(mode==='draw-street'){
+    draftStreetPoints.push(pt);
+    updateDraftControls();
+    renderStreets();
+  } else if(mode==='draw-bairro'){
+    draftBairroPoints.push(pt);
+    updateDraftControls();
+    renderBairroPolygons();
+  } else if(mode==='select'){
+    if(selectedStreetId){ selectedStreetId=null; renderStreets(); }
+    if(selectedBairroId){ selectedBairroId=null; renderBairroPolygons(); }
+  }
+}
+document.getElementById('mapCanvas').addEventListener('mousedown', onCanvasMouseDown);
+document.getElementById('mapCanvas').addEventListener('click', onCanvasClick);
+
+function createPointAt(x,y){
+  const ll = currentMapLL(x,y);
+  const p = {
+    id: uid(),
+    mapId: state.activeMapId,
+    categoryId: state.categories[0] ? state.categories[0].id : null,
+    name:'', description:'', registro:'', address:'', mapsLink:'',
+    photos:[], x:x, y:y,
+    lat: ll ? ll.lat : null, lng: ll ? ll.lng : null,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+  state.points.push(p);
+  saveState();
+  setMode('select');
+  renderPointList(); renderMarkers(); renderLayers();
+  openPointDrawer(p.id, true);
+}
+
+/* ---------- Arrastar marcador ---------- */
+function onMarkerMouseDown(e){
+  e.stopPropagation();
+  if(mode!=='select') return;
+  const id = e.currentTarget.dataset.id;
+  dragCtx = {type:'point', id:id, moved:false, startX:e.clientX, startY:e.clientY};
+  window.addEventListener('mousemove', onMarkerMove);
+  window.addEventListener('mouseup', onMarkerUp);
+}
+let _markerMoveRaf = null;
+function onMarkerMove(e){
+  if(!dragCtx || dragCtx.type!=='point') return;
+  const dx = Math.abs(e.clientX-dragCtx.startX), dy = Math.abs(e.clientY-dragCtx.startY);
+  if(dx>4||dy>4) dragCtx.moved = true;
+  if(!dragCtx.moved) return;
+  dragCtx.lastEvent = e;
+  if(_markerMoveRaf) return;
+  _markerMoveRaf = requestAnimationFrame(function(){
+    _markerMoveRaf = null;
+    if(!dragCtx || dragCtx.type!=='point') return;
+    const pt = getCanvasPoint(dragCtx.lastEvent);
+    const p = state.points.find(function(pp){ return pp.id===dragCtx.id; });
+    if(!p) return;
+    p.x = pt.x; p.y = pt.y;
+    const ll = currentMapLL(pt.x, pt.y);
+    if(ll){ p.lat = ll.lat; p.lng = ll.lng; }
+    // Move só o marcador arrastado diretamente no DOM (em vez de reconstruir
+    // a camada inteira de marcadores a cada pixel do arraste) — é o que mais
+    // pesava com muitos pontos cadastrados.
+    const d = mapDims();
+    const el = document.querySelector('.marker[data-id="'+p.id+'"]');
+    if(el){ el.style.left = (pt.x/d.w*100)+'%'; el.style.top = (pt.y/d.h*100)+'%'; }
+  });
+}
+function onMarkerUp(){
+  window.removeEventListener('mousemove', onMarkerMove);
+  window.removeEventListener('mouseup', onMarkerUp);
+  if(_markerMoveRaf){ cancelAnimationFrame(_markerMoveRaf); _markerMoveRaf=null; }
+  if(dragCtx && dragCtx.type==='point'){
+    if(dragCtx.moved){
+      const p = state.points.find(function(pp){ return pp.id===dragCtx.id; });
+      if(p){ p.updatedAt = new Date().toISOString(); saveState(); renderMarkers(); toast('Ponto reposicionado.'); }
+    } else {
+      openPointDrawer(dragCtx.id);
+    }
+  }
+  dragCtx = null;
+}
+
+/* ---------- Arrastar vértice de rua ---------- */
+function onVertexMouseDown(e){
+  e.stopPropagation();
+  const streetId = e.currentTarget.dataset.street;
+  const idx = parseInt(e.currentTarget.dataset.idx,10);
+  dragCtx = {type:'vertex', streetId:streetId, idx:idx, moved:false};
+  window.addEventListener('mousemove', onVertexMove);
+  window.addEventListener('mouseup', onVertexUp);
+}
+let _vertexMoveRaf = null;
+function onVertexMove(e){
+  if(!dragCtx || dragCtx.type!=='vertex') return;
+  dragCtx.moved = true;
+  dragCtx.lastEvent = e;
+  // Agrupa os pontos de rua recalculados num único requestAnimationFrame por
+  // quadro — sem isso, cada pixel do mousemove disparava uma reconstrução
+  // completa do SVG de ruas (incluindo as outras ruas não relacionadas).
+  if(_vertexMoveRaf) return;
+  _vertexMoveRaf = requestAnimationFrame(function(){
+    _vertexMoveRaf = null;
+    if(!dragCtx || dragCtx.type!=='vertex') return;
+    const pt = getCanvasPoint(dragCtx.lastEvent);
+    const ll = currentMapLL(pt.x, pt.y);
+    if(ll){ pt.lat = ll.lat; pt.lng = ll.lng; }
+    const s = state.streets.find(function(ss){ return ss.id===dragCtx.streetId; });
+    if(s){ s.points[dragCtx.idx] = pt; renderStreets(); }
+  });
+}
+function onVertexUp(){
+  window.removeEventListener('mousemove', onVertexMove);
+  window.removeEventListener('mouseup', onVertexUp);
+  if(_vertexMoveRaf){ cancelAnimationFrame(_vertexMoveRaf); _vertexMoveRaf=null; }
+  if(dragCtx && dragCtx.type==='vertex' && dragCtx.moved){
+    const s = state.streets.find(function(ss){ return ss.id===dragCtx.streetId; });
+    if(s){ s.updatedAt = new Date().toISOString(); saveState(); }
+  }
+  dragCtx = null;
+}
+function selectStreet(id){
+  selectedStreetId = id;
+  selectedPointId = null;
+  renderStreets(); renderMarkers();
+  openStreetDrawer(id);
+}
+
+/* ---------- Zoom / pan ----------
+   Mapa com fundo Google My Maps: os botões de zoom mudam o zoom REAL da
+   câmera (recarrega o Google Maps nesse zoom) e reprojetam pontos/ruas/
+   bairros a partir de lat/lng — por isso tudo continua no lugar certo.
+   Mapa com imagem estática: continua sendo o zoom de exibição (CSS) de
+   sempre, que já preservava o alinhamento por ser só uma ampliação visual
+   de um fundo fixo. */
+function applyZoom(){
+  const canvas = document.getElementById('mapCanvas');
+  const viewport = document.getElementById('mapViewport');
+  const d = mapDims();
+  if(activeIsEmbed()){
+    // Preenche a área real da tela disponível (responsivo), em vez de um
+    // tamanho fixo em pixels — o espaço de coordenadas (d.w x d.h) segue
+    // sendo usado só internamente para projetar lat/lng, então nada se
+    // desalinha ao redimensionar.
+    canvas.style.width = '';
+    canvas.style.height = '';
+    canvas.classList.add('embed-fill');
+    viewport.classList.add('embed-fill');
+    document.getElementById('zoomLevel').textContent = 'Zoom ' + Math.round(getActiveMap().camera.zoom);
+  } else {
+    canvas.classList.remove('embed-fill');
+    viewport.classList.remove('embed-fill');
+    const w = BASE_DISPLAY_W * zoomState;
+    const h = w * (d.h/d.w);
+    canvas.style.width = w+'px';
+    canvas.style.height = h+'px';
+    document.getElementById('zoomLevel').textContent = Math.round(zoomState*100)+'%';
+  }
+}
+function changeCameraZoom(delta){
+  const m = getActiveMap();
+  if(!m || !m.camera) return;
+  m.camera.zoom = Math.max(3, Math.min(21, Math.round(m.camera.zoom+delta)));
+  saveState();
+  // As camadas reagem na hora (é isso que "some junto com o zoom do iframe"
+  // significa aqui); só o recarregamento pesado do Google Maps em si é
+  // adiado (scheduleEmbedReload) até o usuário parar de mexer na roda/botão —
+  // sem isso, cada "tick" do scroll recarregava o iframe inteiro e travava
+  // o navegador durante um gesto contínuo de zoom.
+  applyZoom();
+  renderMarkers(); renderStreets(); renderBairroPolygons();
+  scheduleEmbedReload();
+}
+let _embedReloadTimer = null;
+function scheduleEmbedReload(){
+  clearTimeout(_embedReloadTimer);
+  _embedReloadTimer = setTimeout(function(){ reloadEmbedFrame(); }, 260);
+}
+document.getElementById('zoomIn').addEventListener('click', function(){
+  if(activeIsEmbed()){ changeCameraZoom(1); return; }
+  zoomState=Math.min(3, +(zoomState+0.2).toFixed(2)); applyZoom();
+});
+document.getElementById('zoomOut').addEventListener('click', function(){
+  if(activeIsEmbed()){ changeCameraZoom(-1); return; }
+  zoomState=Math.max(0.4, +(zoomState-0.2).toFixed(2)); applyZoom();
+});
+document.getElementById('zoomReset').addEventListener('click', function(){
+  if(activeIsEmbed()){
+    const m = getActiveMap();
+    m.camera = Object.assign({}, m.homeCamera || DEFAULT_CAMERA);
+    saveState();
+    applyZoom();
+    renderMarkers(); renderStreets(); renderBairroPolygons();
+    clearTimeout(_embedReloadTimer);
+    reloadEmbedFrame();
+    return;
+  }
+  zoomState=1; applyZoom(); document.getElementById('mapViewport').scrollTo({left:0,top:0});
+});
+document.getElementById('mapViewport').addEventListener('wheel', function(e){
+  if(!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  if(activeIsEmbed()){
+    changeCameraZoom(e.deltaY>0 ? -1 : 1);
+    return;
+  }
+  const delta = e.deltaY>0 ? -0.1 : 0.1;
+  zoomState = Math.min(3, Math.max(0.4, +(zoomState+delta).toFixed(2)));
+  applyZoom();
+}, {passive:false});
+
+/* ---------- Reprojeção ao redimensionar (embed) ----------
+   Como mapDims() agora mede o tamanho real do canvas em mapas "embed", toda
+   vez que esse tamanho muda (janela redimensionada, sidebar aberta/fechada,
+   zoom do navegador) é preciso atualizar o viewBox dos SVGs e reprojetar
+   pontos/ruas/bairros — senão eles ficam alinhados ao tamanho antigo até o
+   próximo render. Isso NÃO mexe na câmera (lat/lng/zoom) nem recarrega o
+   iframe: só recalcula onde cada item cai na nova área disponível. */
+let _resizeRaf = null;
+function reprojectEmbedLayers(){
+  if(!activeIsEmbed()) return;
+  const d = mapDims();
+  document.getElementById('overlaySvg').setAttribute('viewBox', '0 0 '+d.w+' '+d.h);
+  document.getElementById('bairroSvg').setAttribute('viewBox', '0 0 '+d.w+' '+d.h);
+  renderMarkers(); renderStreets(); renderBairroPolygons();
+}
+function scheduleReprojectEmbedLayers(){
+  if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
+  _resizeRaf = requestAnimationFrame(reprojectEmbedLayers);
+}
+if(window.ResizeObserver){
+  new ResizeObserver(scheduleReprojectEmbedLayers).observe(document.getElementById('mapCanvas'));
+}
+window.addEventListener('resize', scheduleReprojectEmbedLayers);
+
+/* ---------- Teclado ---------- */
+window.addEventListener('keydown', function(e){
+  const typing = document.activeElement && ['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
+  if(e.key==='Enter' && (mode==='draw-street' || mode==='draw-bairro') && !typing){
+    if(mode==='draw-bairro') finishDraftBairro(); else finishDraftStreet();
+  }
+  else if(e.key==='Escape'){
+    if(mode==='draw-street'){ cancelDraftStreet(); }
+    else if(mode==='draw-bairro'){ cancelDraftBairro(); }
+    else { closeDrawers(); closeModal(); }
+  }
+});
+
+/* ---------- Busca ---------- */
+document.getElementById('searchInput').addEventListener('input', function(e){
+  searchQuery = e.target.value;
+  renderPointList();
+  renderMarkers();
+});
+
+/* ---------- Nome do batalhão ---------- */
+document.getElementById('battalionInput').addEventListener('input', function(e){
+  state.battalionName = e.target.value;
+  saveState();
+});
+
+/* ---------- Seletor de mapa ativo ---------- */
+document.getElementById('mapSelector').addEventListener('change', function(e){
+  state.activeMapId = e.target.value;
+  selectedPointId = null; selectedStreetId = null; selectedBairroId = null;
+  closeDrawers();
+  saveState();
+  zoomState = 1;
+  renderAll();
+  document.getElementById('mapViewport').scrollTo({left:0,top:0});
+});
+
+/* ================= Debounce (autosave em digitação) ================= */
+function debounce(fn, wait){
+  let t;
+  return function(){
+    const args = arguments;
+    clearTimeout(t);
+    t=setTimeout(function(){ fn.apply(null,args); }, wait);
+  };
+}
+const debouncedSave = debounce(function(){ saveState(); }, 500);
+
+/* ================= Drawers: fechar ================= */
+function closeDrawers(){
+  document.getElementById('pointDrawer').classList.remove('show');
+  document.getElementById('streetDrawer').classList.remove('show');
+  document.getElementById('bairroDrawer').classList.remove('show');
+  document.getElementById('drawerBackdrop').classList.remove('show');
+  if(selectedPointId){ selectedPointId=null; renderMarkers(); renderPointList(); }
+  if(selectedStreetId){ selectedStreetId=null; renderStreets(); }
+  if(selectedBairroId){ selectedBairroId=null; renderBairroPolygons(); }
+}
+document.getElementById('pointDrawerClose').addEventListener('click', closeDrawers);
+document.getElementById('streetDrawerClose').addEventListener('click', closeDrawers);
+document.getElementById('bairroDrawerClose').addEventListener('click', closeDrawers);
+document.getElementById('drawerBackdrop').addEventListener('click', closeDrawers);
+
+/* ================= Drawer de ponto ================= */
+function openPointDrawer(id, isNew){
+  const p = state.points.find(function(pp){ return pp.id===id; });
+  if(!p) return;
+  selectedPointId = id;
+  selectedStreetId = null;
+  selectedBairroId = null;
+  document.getElementById('streetDrawer').classList.remove('show');
+  document.getElementById('bairroDrawer').classList.remove('show');
+  document.getElementById('drawerBackdrop').classList.add('show');
+  renderMarkers(); renderPointList(); renderStreets(); renderBairroPolygons();
+
+  const cat = getCategory(p.categoryId);
+  const iconWrap = document.getElementById('pointDrawerIcon');
+  iconWrap.style.background = cat.color;
+  iconWrap.style.color = contrastColor(cat.color);
+  iconWrap.innerHTML = iconSvg(cat.icon);
+  document.getElementById('pointDrawerTitle').textContent = isNew ? 'Novo ponto' : (p.name || 'Ponto sem nome');
+
+  const catOptions = state.categories.map(function(c){
+    return '<option value="'+c.id+'" '+(c.id===p.categoryId?'selected':'')+'>'+esc(c.name)+'</option>';
+  }).join('');
+  const photosHtml = p.photos.map(function(photo,idx){
+    return '<div class="photo-thumb"><img src="'+photo+'" data-idx="'+idx+'" class="photo-view">'
+      + '<button class="photo-remove" data-idx="'+idx+'" title="Remover foto" type="button">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>'
+      + '</button></div>';
+  }).join('');
+
+  document.getElementById('pointDrawerBody').innerHTML =
+    '<div class="field">'
+    + '<label class="field-label">Nome do ponto</label>'
+    + '<input type="text" class="field-input" id="f_name" placeholder="ex.: Rua das Acácias, 120" value="'+esc(p.name)+'">'
+    + '</div>'
+    + '<div class="field">'
+    + '<label class="field-label">Categoria</label>'
+    + '<select class="field-select" id="f_cat">'+catOptions+'</select>'
+    + '</div>'
+    + '<div class="field">'
+    + '<label class="field-label">Descrição</label>'
+    + '<textarea class="field-textarea" id="f_desc" placeholder="Detalhes, observações, histórico…">'+esc(p.description)+'</textarea>'
+    + '</div>'
+    + '<div class="field-row">'
+    + '<div class="field"><label class="field-label">Nº de registro / B.O.</label>'
+    + '<input type="text" class="field-input field-mono" id="f_reg" placeholder="opcional" value="'+esc(p.registro)+'"></div>'
+    + '<div class="field"><label class="field-label">Endereço</label>'
+    + '<input type="text" class="field-input" id="f_addr" placeholder="opcional" value="'+esc(p.address)+'"></div>'
+    + '</div>'
+    + '<div class="field">'
+    + '<label class="field-label">Coordenadas ou link do Google Maps</label>'
+    + '<div class="maps-row">'
+    + '<input type="text" class="field-input field-mono" id="f_maps" placeholder="-27.14, -48.48 ou link" value="'+esc(p.mapsLink)+'">'
+    + '<button class="btn small ghost" id="f_maps_open" title="Abrir no Google Maps" type="button">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    + '</button></div></div>'
+    + '<div class="field">'
+    + '<label class="field-label">Fotos</label>'
+    + '<div class="photo-grid" id="photoGrid">' + photosHtml
+    + '<button class="photo-add" id="f_addphoto" title="Adicionar fotos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></button>'
+    + '</div></div>'
+    + '<div class="meta-row"><span>criado '+fmtDate(p.createdAt)+'</span><span>atualizado '+fmtDate(p.updatedAt)+'</span></div>';
+
+  document.getElementById('pointDrawerFooter').innerHTML = '<button class="btn danger" id="f_delete" type="button">Excluir ponto</button>';
+
+  const touchDebounced = function(){ p.updatedAt = new Date().toISOString(); debouncedSave(); };
+  const touchNow = function(){ p.updatedAt = new Date().toISOString(); saveState(); };
+
+  document.getElementById('f_name').addEventListener('input', function(e){
+    p.name=e.target.value; touchDebounced();
+    document.getElementById('pointDrawerTitle').textContent=p.name||'Ponto sem nome';
+    renderPointList(); renderMarkers();
+  });
+  document.getElementById('f_cat').addEventListener('change', function(e){
+    p.categoryId = e.target.value; touchNow();
+    const c = getCategory(p.categoryId);
+    iconWrap.style.background=c.color; iconWrap.style.color=contrastColor(c.color); iconWrap.innerHTML=iconSvg(c.icon);
+    renderPointList(); renderMarkers(); renderLayers();
+  });
+  document.getElementById('f_desc').addEventListener('input', function(e){ p.description=e.target.value; touchDebounced(); });
+  document.getElementById('f_reg').addEventListener('input', function(e){ p.registro=e.target.value; touchDebounced(); });
+  document.getElementById('f_addr').addEventListener('input', function(e){ p.address=e.target.value; touchDebounced(); });
+  document.getElementById('f_maps').addEventListener('input', function(e){ p.mapsLink=e.target.value; touchDebounced(); });
+  document.getElementById('f_maps_open').addEventListener('click', function(){
+    const v = (p.mapsLink||'').trim();
+    if(!v){ toast('Informe um link ou coordenadas primeiro.'); return; }
+    const coordMatch = v.match(/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/);
+    const url = /^https?:\/\//i.test(v) ? v : (coordMatch ? 'https://www.google.com/maps?q='+encodeURIComponent(v) : 'https://www.google.com/maps/search/'+encodeURIComponent(v));
+    window.open(url, '_blank', 'noopener');
+  });
+  document.getElementById('f_addphoto').addEventListener('click', function(){
+    const input = document.getElementById('photoInput');
+    input.onchange = function(){
+      const files = Array.from(input.files||[]);
+      if(!files.length) return;
+      Promise.all(files.map(function(file){
+        return fileToDataUrl(file).then(function(dataUrl){ return downscaleImage(dataUrl, 1000); });
+      })).then(function(results){
+        results.forEach(function(r){ p.photos.push(r.url); });
+        touchNow();
+        openPointDrawer(p.id);
+      }).catch(function(){ toast('Não foi possível carregar uma das fotos.'); });
+      input.value='';
+    };
+    input.click();
+  });
+  document.getElementById('photoGrid').querySelectorAll('.photo-remove').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const idx = parseInt(btn.dataset.idx,10);
+      p.photos.splice(idx,1); touchNow(); openPointDrawer(p.id);
+    });
+  });
+  document.getElementById('photoGrid').querySelectorAll('.photo-view').forEach(function(img){
+    img.addEventListener('click', function(){ openLightbox(img.src); });
+  });
+  document.getElementById('f_delete').addEventListener('click', function(){
+    confirmAction('Excluir ponto', '<p class="confirm-text">Excluir "'+esc(p.name||'este ponto')+'" definitivamente? Esta ação não pode ser desfeita.</p>', function(){
+      state.points = state.points.filter(function(pp){ return pp.id!==p.id; });
+      saveState();
+      closeDrawers();
+      renderPointList(); renderMarkers(); renderLayers();
+      toast('Ponto excluído.');
+    });
+  });
+
+  document.getElementById('pointDrawer').classList.add('show');
+}
+
+/* ================= Drawer de rua ================= */
+function openStreetDrawer(id){
+  const s = state.streets.find(function(ss){ return ss.id===id; });
+  if(!s) return;
+  selectedStreetId = id;
+  selectedPointId = null;
+  selectedBairroId = null;
+  document.getElementById('pointDrawer').classList.remove('show');
+  document.getElementById('bairroDrawer').classList.remove('show');
+  document.getElementById('drawerBackdrop').classList.add('show');
+  renderStreets(); renderMarkers(); renderBairroPolygons();
+
+  document.getElementById('streetDrawerBody').innerHTML =
+    '<div class="field"><label class="field-label">Nome da rua</label>'
+    + '<input type="text" class="field-input" id="s_name" placeholder="ex.: Av. Beira Mar" value="'+esc(s.name||'')+'"></div>'
+    + '<div class="field"><label class="field-label">Observações</label>'
+    + '<textarea class="field-textarea" id="s_notes" placeholder="pavimentação, sentido, restrições…">'+esc(s.notes||'')+'</textarea></div>'
+    + '<div class="field-hint">Arraste os pontos (círculos) na rua para ajustar o traçado sobre o mapa.</div>'
+    + '<div class="meta-row"><span>'+s.points.length+' vértice(s)</span><span>atualizado '+fmtDate(s.updatedAt)+'</span></div>';
+
+  document.getElementById('streetDrawerFooter').innerHTML = '<button class="btn danger" id="s_delete" type="button">Excluir rua</button>';
+
+  document.getElementById('s_name').addEventListener('input', function(e){ s.name=e.target.value; s.updatedAt=new Date().toISOString(); debouncedSave(); });
+  document.getElementById('s_notes').addEventListener('input', function(e){ s.notes=e.target.value; s.updatedAt=new Date().toISOString(); debouncedSave(); });
+  document.getElementById('s_delete').addEventListener('click', function(){
+    confirmAction('Excluir rua', '<p class="confirm-text">Excluir "'+esc(s.name||'esta rua')+'" definitivamente?</p>', function(){
+      state.streets = state.streets.filter(function(ss){ return ss.id!==s.id; });
+      saveState(); closeDrawers(); renderStreets(); renderLayers();
+      toast('Rua excluída.');
+    });
+  });
+
+  document.getElementById('streetDrawer').classList.add('show');
+}
+
+/* ================= Drawer de bairro ================= */
+function openBairroDrawer(id){
+  const b = state.bairros.find(function(bb){ return bb.id===id; });
+  if(!b) return;
+  selectedBairroId = id;
+  selectedPointId = null;
+  selectedStreetId = null;
+  document.getElementById('pointDrawer').classList.remove('show');
+  document.getElementById('streetDrawer').classList.remove('show');
+  document.getElementById('drawerBackdrop').classList.add('show');
+  renderBairroPolygons(); renderMarkers(); renderStreets();
+
+  document.getElementById('bairroDrawerTitle').textContent = b.name || 'Bairro sem nome';
+  const hasShape = b.polygon && b.polygon.length>=3;
+
+  document.getElementById('bairroDrawerBody').innerHTML =
+    '<div class="field"><label class="field-label">Nome do bairro</label>'
+    + '<input type="text" class="field-input" id="b_name" placeholder="ex.: Centro" value="'+esc(b.name||'')+'"></div>'
+    + '<div class="field"><label class="field-label">Número de habitantes</label>'
+    + '<input type="number" min="0" step="1" class="field-input field-mono" id="b_pop" placeholder="ex.: 4200" value="'+(b.population!=null?b.population:'')+'">'
+    + '<div class="field-hint">Aparece junto ao nome do bairro diretamente sobre o mapa.</div></div>'
+    + '<div class="field"><label class="field-label">Fonte do dado de população</label>'
+    + '<input type="text" class="field-input" id="b_source" placeholder="ex.: IBGE 2022, censo municipal…" value="'+esc(b.source||'')+'"></div>'
+    + '<div class="field"><label class="field-label">Observações</label>'
+    + '<textarea class="field-textarea" id="b_notes" placeholder="limites, particularidades, pontos de atenção…">'+esc(b.notes||'')+'</textarea></div>'
+    + '<div class="field-hint">'+(hasShape ? 'Contorno desenhado no mapa. Arraste os círculos para ajustar, ou redesenhe do zero.' : 'Este bairro ainda não tem contorno desenhado no mapa.')+'</div>'
+    + '<div class="meta-row"><span>'+(hasShape? (b.polygon.length+' vértice(s)') : 'sem contorno')+'</span><span>atualizado '+fmtDate(b.updatedAt)+'</span></div>';
+
+  document.getElementById('bairroDrawerFooter').innerHTML =
+    '<button class="btn ghost" id="b_redraw" type="button">'+(hasShape?'Redesenhar contorno':'Desenhar contorno')+'</button>'
+    + '<button class="btn danger" id="b_delete" type="button">Excluir bairro</button>';
+
+  const touch = function(){ b.updatedAt=new Date().toISOString(); debouncedSave(); };
+  document.getElementById('b_name').addEventListener('input', function(e){
+    b.name=e.target.value; touch();
+    document.getElementById('bairroDrawerTitle').textContent = b.name || 'Bairro sem nome';
+    renderBairroPolygons(); renderLayers();
+  });
+  document.getElementById('b_pop').addEventListener('input', function(e){
+    const v = e.target.value;
+    b.population = v==='' ? null : Math.max(0, parseInt(v,10)||0);
+    touch(); renderBairroPolygons();
+  });
+  document.getElementById('b_source').addEventListener('input', function(e){ b.source=e.target.value; touch(); });
+  document.getElementById('b_notes').addEventListener('input', function(e){ b.notes=e.target.value; touch(); });
+  document.getElementById('b_redraw').addEventListener('click', function(){
+    pendingBairroId = b.id;
+    closeDrawers();
+    setMode('draw-bairro');
+    toast('Desenhando novo contorno para "'+(b.name||'bairro')+'". Enter para concluir, Esc para cancelar.');
+  });
+  document.getElementById('b_delete').addEventListener('click', function(){
+    confirmAction('Excluir bairro', '<p class="confirm-text">Excluir "'+esc(b.name||'este bairro')+'" e seu contorno definitivamente?</p>', function(){
+      state.bairros = state.bairros.filter(function(bb){ return bb.id!==b.id; });
+      saveState(); closeDrawers(); renderBairroPolygons(); renderLayers();
+      toast('Bairro excluído.');
+    });
+  });
+
+  document.getElementById('bairroDrawer').classList.add('show');
+}
+
+/* ================= Modal genérico ================= */
+function openModal(title, bodyHtml, buttons, opts){
+  const wide = opts && opts.wide;
+  const root = document.getElementById('modalRoot');
+  root.innerHTML =
+    '<div class="modal-backdrop" id="genericModalBackdrop">'
+    + '<div class="modal '+(wide?'wide':'')+'">'
+    + '<div class="modal-head"><span class="modal-title">'+esc(title)+'</span>'
+    + '<button class="modal-close" id="genericModalClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button></div>'
+    + '<div class="modal-body">'+bodyHtml+'</div>'
+    + '<div class="modal-foot" id="genericModalFoot"></div>'
+    + '</div></div>';
+  const foot = document.getElementById('genericModalFoot');
+  (buttons||[]).forEach(function(btn){
+    const b = document.createElement('button');
+    b.type='button';
+    b.className = 'btn ' + (btn.kind||'ghost');
+    b.textContent = btn.label;
+    b.addEventListener('click', btn.onClick);
+    foot.appendChild(b);
+  });
+  document.getElementById('genericModalClose').addEventListener('click', closeModal);
+  document.getElementById('genericModalBackdrop').addEventListener('click', function(e){ if(e.target.id==='genericModalBackdrop') closeModal(); });
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function confirmAction(title, bodyHtml, onConfirm){
+  openModal(title, bodyHtml, [
+    {label:'Cancelar', kind:'ghost', onClick:closeModal},
+    {label:'Confirmar', kind:'danger', onClick:function(){ closeModal(); onConfirm(); }}
+  ]);
+}
+function openLightbox(src){
+  const root = document.getElementById('modalRoot');
+  const wrap = document.createElement('div');
+  wrap.className='lightbox-backdrop';
+  wrap.innerHTML = '<img src="'+src+'"><button class="lightbox-close" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>';
+  root.appendChild(wrap);
+  const close = function(){ wrap.remove(); };
+  wrap.querySelector('.lightbox-close').addEventListener('click', close);
+  wrap.addEventListener('click', function(e){ if(e.target===wrap) close(); });
+}
+
+/* ================= Modal: Categorias ================= */
+document.getElementById('btnCategories').addEventListener('click', renderCategoriesModal);
+function renderCategoriesModal(){
+  const rowsHtml = state.categories.map(function(c){
+    const count = state.points.filter(function(p){ return p.categoryId===c.id; }).length;
+    return '<div class="cat-row" data-id="'+c.id+'">'
+      + '<input type="color" class="color-input" value="'+c.color+'" data-field="color">'
+      + '<select class="field-select icon-select" data-field="icon">'+iconOptions(c.icon)+'</select>'
+      + '<input type="text" class="field-input cat-name-input" data-field="name" value="'+esc(c.name)+'" placeholder="nome da categoria">'
+      + '<span class="cat-count-hint">'+count+' pt(s)</span>'
+      + '<button class="icon-remove-btn" data-action="remove" title="Remover categoria" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>'
+      + '</div>';
+  }).join('');
+  openModal('Categorias de pontos',
+    '<div id="catRows">'+rowsHtml+'</div>'
+    + '<button class="btn small ghost" id="catAdd" type="button" style="margin-top:10px;width:100%;justify-content:center;">+ Adicionar categoria</button>',
+    [{label:'Concluído', kind:'primary', onClick:closeModal}], {wide:true}
+  );
+  wireCategoryRows();
+  document.getElementById('catAdd').addEventListener('click', function(){
+    state.categories.push({id:'cat_'+uid(), name:'Nova categoria', color:'#8B929D', icon:'star'});
+    saveState();
+    renderCategoriesModal();
+    renderLayers(); renderPointList(); renderMarkers();
+  });
+}
+function wireCategoryRows(){
+  document.querySelectorAll('#catRows .cat-row').forEach(function(row){
+    const id = row.dataset.id;
+    const cat = state.categories.find(function(c){ return c.id===id; });
+    if(!cat) return;
+    row.querySelector('[data-field="color"]').addEventListener('input', function(e){
+      cat.color = e.target.value; saveState(); renderLayers(); renderPointList(); renderMarkers();
+    });
+    row.querySelector('[data-field="icon"]').addEventListener('change', function(e){
+      cat.icon = e.target.value; saveState(); renderLayers(); renderPointList(); renderMarkers();
+    });
+    row.querySelector('[data-field="name"]').addEventListener('input', function(e){
+      cat.name = e.target.value; saveState(); renderLayers(); renderPointList();
+    });
+    row.querySelector('[data-action="remove"]').addEventListener('click', function(){
+      if(state.categories.length<=1){ toast('Mantenha ao menos uma categoria.'); return; }
+      const inUse = state.points.filter(function(p){ return p.categoryId===cat.id; }).length;
+      confirmAction('Remover categoria', '<p class="confirm-text">Remover "'+esc(cat.name)+'"?'+(inUse? ' '+inUse+' ponto(s) cadastrados nela passarão para a primeira categoria da lista.':'')+'</p>', function(){
+        const fallback = state.categories.find(function(c){ return c.id!==cat.id; });
+        state.points.forEach(function(p){ if(p.categoryId===cat.id) p.categoryId = fallback.id; });
+        state.categories = state.categories.filter(function(c){ return c.id!==cat.id; });
+        categoryFilter.delete(cat.id);
+        saveState();
+        renderCategoriesModal();
+        renderLayers(); renderPointList(); renderMarkers();
+      });
+    });
+  });
+}
+
+/* ================= Modal: Bairros ================= */
+document.getElementById('btnBairros').addEventListener('click', renderBairrosModal);
+function renderBairrosModal(){
+  const mapBairros = state.bairros.filter(function(b){ return b.mapId===state.activeMapId; })
+    .sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','pt-BR'); });
+  const rowsHtml = mapBairros.map(function(b){
+    const has = b.polygon && b.polygon.length>=3;
+    return '<div class="bairro-mgmt-row" data-id="'+b.id+'">'
+      + '<input type="text" class="field-input bairro-mgmt-name" data-field="name" value="'+esc(b.name||'')+'" placeholder="nome do bairro">'
+      + '<input type="number" min="0" step="1" class="field-input field-mono bairro-mgmt-pop" data-field="population" value="'+(b.population!=null?b.population:'')+'" placeholder="habitantes">'
+      + '<span class="bairro-mgmt-status '+(has?'has-shape':'no-shape')+'">'+(has?'com contorno':'sem contorno')+'</span>'
+      + '<button class="icon-remove-btn" data-action="remove" title="Excluir bairro" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>'
+      + '</div>';
+  }).join('');
+  openModal('Bairros — ' + (getActiveMap()? getActiveMap().name : ''),
+    '<div class="field-hint" style="margin-bottom:10px;">Edite nome e população rapidamente aqui, ou clique num bairro no mapa para abrir os detalhes completos e desenhar/ajustar o contorno.</div>'
+    + '<div id="bairroRows">'+(rowsHtml || '<div class="empty-hint">Nenhum bairro cadastrado para este mapa ainda.</div>')+'</div>'
+    + '<button class="btn small ghost" id="bairroAdd" type="button" style="margin-top:10px;width:100%;justify-content:center;">+ Adicionar bairro</button>',
+    [{label:'Concluído', kind:'primary', onClick:closeModal}], {wide:true}
+  );
+  wireBairroRows();
+  document.getElementById('bairroAdd').addEventListener('click', function(){
+    state.bairros.push({id:uid(), mapId:state.activeMapId, name:'Novo bairro', population:null, notes:'', source:'', polygon:null, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
+    saveState();
+    renderBairrosModal();
+    renderLayers();
+  });
+}
+function wireBairroRows(){
+  document.querySelectorAll('#bairroRows .bairro-mgmt-row').forEach(function(row){
+    const id = row.dataset.id;
+    const b = state.bairros.find(function(x){ return x.id===id; });
+    if(!b) return;
+    row.querySelector('[data-field="name"]').addEventListener('input', function(e){
+      b.name=e.target.value; b.updatedAt=new Date().toISOString(); debouncedSave();
+      renderBairroPolygons(); renderLayers();
+    });
+    row.querySelector('[data-field="population"]').addEventListener('input', function(e){
+      const v = e.target.value;
+      b.population = v==='' ? null : Math.max(0, parseInt(v,10)||0);
+      b.updatedAt=new Date().toISOString(); debouncedSave();
+      renderBairroPolygons();
+    });
+    row.querySelector('[data-action="remove"]').addEventListener('click', function(){
+      confirmAction('Excluir bairro', '<p class="confirm-text">Excluir "'+esc(b.name||'este bairro')+'" e seu contorno?</p>', function(){
+        state.bairros = state.bairros.filter(function(x){ return x.id!==b.id; });
+        saveState();
+        renderBairrosModal();
+        renderBairroPolygons(); renderLayers();
+      });
+    });
+  });
+}
+
+/* ================= Modal: Gerenciar mapas / plano de fundo ================= */
+document.getElementById('btnManageMaps').addEventListener('click', renderMapsModal);
+function renderMapsModal(){
+  const cardsHtml = state.maps.map(function(m){
+    return '<div class="map-mgmt-card" data-id="'+m.id+'">'
+      + '<div class="map-mgmt-head">'
+      + '<input type="text" class="field-input" data-field="name" value="'+esc(m.name)+'" placeholder="nome do mapa / município">'
+      + '<button class="icon-remove-btn" data-action="remove" title="Excluir mapa" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>'
+      + '</div>'
+      + '<div class="map-mgmt-grid">'
+      + '<div class="field"><label class="field-label">Link do Google My Maps (compartilhar, editar ou incorporar)</label>'
+      + '<input type="text" class="field-input field-mono" data-field="embedUrl" value="'+esc(m.embedUrl||'')+'" placeholder="cole o link de compartilhamento, o link de incorporação ou o &lt;iframe&gt; inteiro"></div>'
+      + '<div class="field-hint">Funciona com qualquer um dos três: o link de "Compartilhar" (…/edit?mid=…), o link gerado em "Incorporar no meu site" (…/embed?mid=…), ou o próprio código &lt;iframe&gt;. O sistema converte automaticamente.'
+      + '<br><strong style="color:var(--text)">Importante:</strong> no Google My Maps, abra <em>Compartilhar</em> e defina o acesso como "Qualquer pessoa com o link pode ver" (mapa público). Se o mapa ficar restrito/privado, o Google bloqueia a exibição aqui dentro mesmo com o link correto.</div>'
+      + (m.backgroundMode==='embed' ? (
+        '<div class="field"><label class="field-label">Posição/zoom do Google Maps (referência usada para calcular a posição de cada ponto/rua/bairro)</label>'
+        + '<input type="text" class="field-input field-mono" data-field="cameraPaste" placeholder="cole aqui um link do Google Maps com @latitude,longitude,zoom para centralizar">'
+        + '<div style="display:flex;gap:6px;margin-top:6px;">'
+        + '<input type="text" class="field-input field-mono" data-field="camLat" value="'+(m.camera?m.camera.lat.toFixed(6):'')+'" placeholder="latitude" style="flex:1;">'
+        + '<input type="text" class="field-input field-mono" data-field="camLng" value="'+(m.camera?m.camera.lng.toFixed(6):'')+'" placeholder="longitude" style="flex:1;">'
+        + '<input type="number" class="field-input field-mono" data-field="camZoom" value="'+(m.camera?Math.round(m.camera.zoom):14)+'" min="3" max="21" placeholder="zoom" style="width:70px;">'
+        + '</div>'
+        + '<div class="field-hint">Essa posição é a referência que o app usa para calcular onde cada ponto/rua/bairro cai na tela. Os botões de zoom e o arraste no mapa (modo Selecionar) já atualizam isso sozinhos — mexa aqui só para recentralizar manualmente ou corrigir algo.'
+        + '<br><button class="btn small ghost" data-action="set-home" type="button" style="margin-top:6px;">Definir esta posição como padrão do botão "Centralizar"</button></div></div>'
+      ) : '')
+      + '<div class="field"><label class="field-label">Fonte / observação exibida no mapa</label>'
+      + '<input type="text" class="field-input" data-field="source" value="'+esc(m.source||'')+'" placeholder="ex.: Google My Maps · atualizado em ..."></div>'
+      + '<div class="field"><label class="field-label">Plano de fundo usado no mapa</label>'
+      + '<div class="bg-mode-row">'
+      + '<button type="button" class="bg-mode-btn '+(m.backgroundMode==='embed'?'active':'')+'" data-mode="embed">Google My Maps</button>'
+      + '<button type="button" class="bg-mode-btn '+(m.backgroundMode==='image'?'active':'')+'" data-mode="image">Imagem estática</button>'
+      + '</div></div>'
+      + '<div class="map-mgmt-foot">'
+      + '<button class="btn small ghost" data-action="replace-image" type="button">Substituir imagem estática</button>'
+      + '<button class="btn small ghost" data-action="use" type="button">'+(m.id===state.activeMapId?'Mapa ativo':'Usar este mapa')+'</button>'
+      + '</div>'
+      + '</div></div>';
+  }).join('');
+  openModal('Gerenciar mapas e plano de fundo',
+    '<div id="mapCards">'+cardsHtml+'</div>'
+    + '<button class="btn small ghost" id="mapAdd" type="button" style="margin-top:10px;width:100%;justify-content:center;">+ Adicionar mapa (novo município / setor)</button>',
+    [{label:'Concluído', kind:'primary', onClick:function(){ closeModal(); renderAll(); }}], {wide:true}
+  );
+  wireMapCards();
+  document.getElementById('mapAdd').addEventListener('click', function(){
+    const homeCam = Object.assign({}, DEFAULT_CAMERA);
+    const nm = {id:'map_'+uid(), name:'Novo mapa', image: buildPlaceholder('NOVO MAPA'), width:MAP_W_DEFAULT, height:MAP_H_DEFAULT, source:'', embedUrl:'', backgroundMode:'image', camera: Object.assign({}, homeCam), homeCamera: homeCam};
+    state.maps.push(nm);
+    saveState();
+    renderMapsModal();
+  });
+}
+function wireMapCards(){
+  document.querySelectorAll('#mapCards .map-mgmt-card').forEach(function(card){
+    const id = card.dataset.id;
+    const m = state.maps.find(function(x){ return x.id===id; });
+    if(!m) return;
+    card.querySelector('[data-field="name"]').addEventListener('input', function(e){
+      m.name=e.target.value; saveState(); renderMapSelector();
+    });
+    card.querySelector('[data-field="embedUrl"]').addEventListener('input', function(e){
+      const raw = e.target.value;
+      m.embedUrl = normalizeEmbedUrl(raw);
+      if(m.embedUrl && m.backgroundMode!=='image_forced') m.backgroundMode='embed';
+      const parsedCam = parseCameraFromEmbed(raw) || parseCameraFromEmbed(m.embedUrl);
+      if(parsedCam){ m.camera = parsedCam; if(!m.homeCamera) m.homeCamera = Object.assign({}, parsedCam); }
+      else if(!m.camera){ m.camera = Object.assign({}, DEFAULT_CAMERA); m.homeCamera = Object.assign({}, DEFAULT_CAMERA); }
+      saveState();
+      if(m.id===state.activeMapId){ applyZoom(); renderMapBackground(); renderMarkers(); renderStreets(); renderBairroPolygons(); }
+    });
+    card.querySelector('[data-field="source"]').addEventListener('input', function(e){
+      m.source=e.target.value; saveState(); if(m.id===state.activeMapId) renderMapSelector();
+    });
+    const camPasteEl = card.querySelector('[data-field="cameraPaste"]');
+    if(camPasteEl){
+      camPasteEl.addEventListener('change', function(e){
+        const v = e.target.value.trim();
+        const mm = v.match(/@(-?\d+\.\d+),(-?\d+\.\d+),(\d+(?:\.\d+)?)z/i) || v.match(/[?&]ll=(-?\d+\.\d+)[,\s](-?\d+\.\d+).*?[?&]z=(\d+(?:\.\d+)?)/i);
+        if(!mm){ toast('Não encontrei @latitude,longitude,zoom nesse link.'); return; }
+        m.camera = {lat:parseFloat(mm[1]), lng:parseFloat(mm[2]), zoom:parseFloat(mm[3])};
+        if(!m.homeCamera) m.homeCamera = Object.assign({}, m.camera);
+        saveState();
+        renderMapsModal();
+        if(m.id===state.activeMapId){ reloadEmbedFrame(); applyZoom(); renderMarkers(); renderStreets(); renderBairroPolygons(); }
+        toast('Posição do mapa "'+m.name+'" atualizada.');
+      });
+    }
+    ['camLat','camLng','camZoom'].forEach(function(f){
+      const el = card.querySelector('[data-field="'+f+'"]');
+      if(!el) return;
+      el.addEventListener('change', function(e){
+        const v = parseFloat(e.target.value);
+        if(isNaN(v)) return;
+        if(!m.camera) m.camera = Object.assign({}, DEFAULT_CAMERA);
+        if(f==='camLat') m.camera.lat = v;
+        if(f==='camLng') m.camera.lng = v;
+        if(f==='camZoom') m.camera.zoom = Math.max(3, Math.min(21, Math.round(v)));
+        saveState();
+        if(m.id===state.activeMapId){ reloadEmbedFrame(); applyZoom(); renderMarkers(); renderStreets(); renderBairroPolygons(); }
+      });
+    });
+    const setHomeBtn = card.querySelector('[data-action="set-home"]');
+    if(setHomeBtn){
+      setHomeBtn.addEventListener('click', function(){
+        m.homeCamera = Object.assign({}, m.camera || DEFAULT_CAMERA);
+        saveState();
+        toast('Posição padrão de "'+m.name+'" atualizada.');
+      });
+    }
+    card.querySelectorAll('.bg-mode-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const wanted = btn.dataset.mode;
+        if(wanted==='embed' && !m.embedUrl){ toast('Cole o link do Google My Maps antes de usá-lo como fundo.'); return; }
+        m.backgroundMode = wanted;
+        saveState();
+        renderMapsModal();
+        if(m.id===state.activeMapId) renderMapBackground();
+      });
+    });
+    card.querySelector('[data-action="replace-image"]').addEventListener('click', function(){
+      const input = document.getElementById('mapImageInput');
+      input.onchange = function(){
+        const file = input.files && input.files[0];
+        if(!file) return;
+        fileToDataUrl(file).then(function(dataUrl){ return downscaleImage(dataUrl, 2200); }).then(function(r){
+          m.image = r.url; m.width = r.w; m.height = r.h;
+          saveState();
+          toast('Imagem do mapa "'+m.name+'" atualizada.');
+          if(m.id===state.activeMapId) renderMapBackground();
+        }).catch(function(){ toast('Não foi possível carregar a imagem.'); });
+        input.value='';
+      };
+      input.click();
+    });
+    card.querySelector('[data-action="use"]').addEventListener('click', function(){
+      state.activeMapId = m.id;
+      selectedPointId=null; selectedStreetId=null; selectedBairroId=null;
+      closeDrawers();
+      saveState();
+      zoomState=1;
+      closeModal();
+      renderAll();
+    });
+    card.querySelector('[data-action="remove"]').addEventListener('click', function(){
+      if(state.maps.length<=1){ toast('Mantenha ao menos um mapa.'); return; }
+      const nPts = state.points.filter(function(p){ return p.mapId===m.id; }).length;
+      const nStr = state.streets.filter(function(s){ return s.mapId===m.id; }).length;
+      const nBai = state.bairros.filter(function(b){ return b.mapId===m.id; }).length;
+      confirmAction('Excluir mapa', '<p class="confirm-text">Excluir "'+esc(m.name)+'"? Isso removerá também '+nPts+' ponto(s), '+nStr+' rua(s) e '+nBai+' bairro(s) associados a ele.</p>', function(){
+        state.maps = state.maps.filter(function(x){ return x.id!==m.id; });
+        state.points = state.points.filter(function(p){ return p.mapId!==m.id; });
+        state.streets = state.streets.filter(function(s){ return s.mapId!==m.id; });
+        state.bairros = state.bairros.filter(function(b){ return b.mapId!==m.id; });
+        if(state.activeMapId===m.id) state.activeMapId = state.maps[0].id;
+        saveState();
+        renderMapsModal();
+        renderAll();
+      });
+    });
+  });
+}
+
+/* ================= Exportar / Importar backup ================= */
+document.getElementById('btnExport').addEventListener('click', function(){
+  try{
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href = url;
+    a.download = 'mapa-operacional-backup-'+stamp+'.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    toast('Backup exportado.');
+  }catch(e){ toast('Não foi possível exportar o backup.'); }
+});
+document.getElementById('btnImport').addEventListener('click', function(){
+  confirmAction('Importar backup', '<p class="confirm-text">Selecionar um arquivo .json substituirá TODOS os dados atuais (mapas, pontos, ruas e bairros) por aqueles do backup. Recomenda-se exportar um backup atual antes de continuar.</p>', function(){
+    document.getElementById('importInput').click();
+  });
+});
+document.getElementById('importInput').addEventListener('change', function(){
+  const file = this.files && this.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.maps) || !parsed.categories || !parsed.points || !parsed.streets){
+        toast('Arquivo inválido: estrutura de backup não reconhecida.'); return;
+      }
+      if(typeof parsed.streetsVisible === 'undefined') parsed.streetsVisible = true;
+      if(typeof parsed.bairrosVisible === 'undefined') parsed.bairrosVisible = true;
+      if(!Array.isArray(parsed.bairros)) parsed.bairros = [];
+      parsed.maps = normalizeMaps(parsed.maps);
+      parsed.bairros = normalizeBairros(parsed.bairros);
+      parsed.version = 5;
+      state = parsed;
+      if(!state.maps.find(function(m){ return m.id===state.activeMapId; })) state.activeMapId = state.maps[0].id;
+      migrateGeoData();
+      categoryFilter = new Set(state.categories.map(function(c){ return c.id; }));
+      selectedPointId=null; selectedStreetId=null; selectedBairroId=null;
+      zoomState=1;
+      saveState();
+      closeDrawers();
+      renderAll();
+      toast('Backup importado com sucesso.');
+    }catch(e){ toast('Não foi possível importar: arquivo inválido.'); }
+    document.getElementById('importInput').value='';
+  };
+  reader.readAsText(file);
+});
+
+/* ================= Menu mobile ================= */
+document.getElementById('sidebarToggle').addEventListener('click', function(){
+  document.getElementById('sidebar').classList.toggle('show');
+});
+
+/* ================= Inicialização ================= */
+renderAll();
+</script>
+</body>
+</html>
